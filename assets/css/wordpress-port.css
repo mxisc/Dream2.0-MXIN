@@ -1,0 +1,1669 @@
+/* WordPress integration layer for Dream 2.0. */
+
+.dream2-wordpress .navbar-above {
+    top: 0;
+    height: 49px;
+}
+
+.admin-bar.dream2-wordpress .navbar-above {
+    top: 32px;
+}
+
+@media screen and (max-width: 782px) {
+    .admin-bar.dream2-wordpress .navbar-above {
+        top: 46px;
+    }
+}
+
+.dream2-wordpress .navbar-above > .container {
+    height: 49px;
+}
+
+.dream2-wordpress .navbar-search .submit {
+    border-radius: 17px !important;
+    cursor: pointer;
+}
+
+.dream2-wordpress .navbar-slideicon {
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: transparent;
+}
+
+.dream2-wordpress .dream-post-list + .card.card-transparent {
+    margin-top: 1.4em;
+}
+
+.dream2-wordpress .navbar-nav > li {
+    display: inline-flex;
+    position: relative;
+    height: 49px !important;
+    list-style: none;
+}
+
+.dream2-wordpress .navbar-nav {
+    height: 49px;
+}
+
+.dream2-wordpress .navbar-nav .sub-menu,
+.dream2-wordpress .navbar-nav .item-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 50;
+    min-width: 10rem;
+    padding: .5rem;
+    background: var(--background);
+    border-radius: var(--radius);
+    box-shadow: var(--box-shadow);
+}
+
+.dream2-wordpress .navbar-nav li:hover > .sub-menu,
+.dream2-wordpress .navbar-nav li:hover > .item-dropdown-menu {
+    display: block;
+}
+
+.dream2-wordpress .navbar-nav .item.current {
+    color: var(--theme);
+}
+
+.dream2-wordpress .dream-drawer-stats .item > div {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+.dream2-wordpress .navbar-slideout-menu button.panel {
+    width: 100%;
+    border: 0;
+    font: inherit;
+    text-align: left;
+    color: inherit;
+    background: transparent;
+}
+
+.dream2-wordpress .post-navigation .level-item {
+    min-width: 0;
+}
+
+.dream2-wordpress .post-navigation .level-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dream2-wordpress .column-main {
+    min-width: 0;
+}
+
+.dream2-wordpress .meta .breadcrumb li {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.dream2-wordpress .card-cover {
+    position: relative;
+    overflow: hidden;
+}
+
+.dream2-wordpress .card-cover > a {
+    display: block;
+    position: relative;
+}
+
+.dream2-wordpress .card-cover .cover-image {
+    min-height: 21rem;
+}
+
+.dream2-wordpress .card-cover .details {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+    padding: 4rem 2rem 1.5rem;
+    color: #fff;
+    background: linear-gradient(transparent, rgba(0, 0, 0, .72));
+}
+
+.dream2-wordpress .card-cover .details a,
+.dream2-wordpress .card-cover .details .title {
+    color: inherit;
+}
+
+.dream2-wordpress .dream-single-cover {
+    position: relative;
+    min-height: 24rem;
+    background-position: center;
+    background-size: cover;
+}
+
+.dream2-wordpress .dream-single-cover:after {
+    content: "";
+    position: absolute;
+    inset: 35% 0 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, .75));
+}
+
+.dream2-wordpress .dream-single-cover .details,
+.dream2-wordpress .dream-single-cover .category {
+    position: absolute;
+    z-index: 2;
+}
+
+.dream2-wordpress .dream-single-cover .details {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    color: #fff;
+}
+
+.dream2-wordpress .dream-single-cover .category {
+    top: 1rem;
+    right: 1rem;
+}
+
+.dream2-wordpress .dream-single-cover .breadcrumb {
+    height: 13px;
+    line-height: 1 !important;
+}
+
+.dream2-wordpress .article iframe {
+    max-width: 100%;
+}
+
+.dream2-wordpress .main-content.article img:not(.dream-emoji) {
+    height: auto !important;
+}
+
+.dream2-wordpress .dshare-container .dream-share-icon {
+    color: var(--theme);
+    border-color: var(--theme);
+    background: transparent;
+    font-family: remixicon !important;
+}
+
+.dream2-wordpress .dshare-container .dream-share-icon:before {
+    content: none !important;
+}
+
+.dream2-wordpress .dshare-container .dream-share-icon:hover {
+    color: #fff;
+    background: var(--theme);
+}
+
+.dream2-wordpress .dshare-container .dream-share-icon i {
+    display: block;
+    font-family: remixicon !important;
+    font-size: 20px;
+    line-height: 32px;
+    pointer-events: none;
+}
+
+.dream2-wordpress .dream-folded-code {
+    position: relative;
+    max-height: 24rem;
+    overflow: hidden;
+}
+
+.dream2-wordpress .dream-folded-code:not(.dream-fold-open):after {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 6rem;
+    background: linear-gradient(transparent, var(--background));
+}
+
+.dream2-wordpress .dream-folded-code.dream-fold-open {
+    max-height: none;
+}
+
+.dream2-wordpress .dream-fold-toggle {
+    display: block;
+    margin: .5rem auto 1rem;
+    padding: .35rem 1rem;
+    border: 0;
+    border-radius: 999px;
+    color: #fff;
+    background: var(--theme);
+    cursor: pointer;
+}
+
+.dream2-wordpress .dream-folded-image {
+    position: relative;
+    max-height: 32rem;
+    overflow: hidden;
+    cursor: zoom-in;
+}
+
+.dream2-wordpress .dream-folded-image:not(.dream-fold-open):after {
+    content: "点击展开长图";
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 3rem 1rem 1rem;
+    color: var(--dark-c);
+    text-align: center;
+    background: linear-gradient(transparent, var(--background));
+}
+
+.dream2-wordpress .dream-folded-image.dream-fold-open {
+    max-height: none;
+    cursor: zoom-out;
+}
+
+.dream2-wordpress .dream-image-name {
+    display: block;
+    margin: .5rem 0 1rem;
+    color: var(--dark-c);
+    text-align: center;
+    font-size: .88em;
+    line-height: 1.5;
+    opacity: 1;
+}
+
+.dream2-wordpress .dshare-container button.dshare-icon {
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+html.dream-load-progress-enabled.dream-pjax-loading:not(.dream-dprogress-active):after {
+    content: "";
+    position: fixed;
+    z-index: 10000;
+    top: 0;
+    left: 0;
+    width: 35%;
+    height: 3px;
+    background: var(--theme);
+    animation: dream-pjax-progress 1s ease-in-out infinite alternate;
+}
+
+@keyframes dream-pjax-progress {
+    from { transform: translateX(-30%); }
+    to { transform: translateX(230%); }
+}
+
+.dream2-wordpress .dream-links-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .55rem;
+}
+
+.dream2-wordpress .dream-link-group + .dream-link-group {
+    margin-top: 1rem;
+}
+
+.dream2-wordpress .dream-link-group h3 {
+    margin: 0 0 .7rem;
+    padding-left: .55rem;
+    border-left: 4px solid var(--theme);
+    font-size: 1.15rem;
+    line-height: 1.25;
+}
+
+.dream2-wordpress .dream-link-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .65rem;
+    min-height: 78px;
+    padding: .75rem .8rem .75rem 1rem;
+    border: 1px solid rgba(127, 127, 127, .18);
+    border-radius: .55rem;
+    color: var(--main);
+    background: transparent;
+    transition: border-color .2s, transform .2s, box-shadow .2s;
+}
+
+.dream2-wordpress .dream-link-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--theme);
+    box-shadow: var(--box-shadow);
+}
+
+.dream2-wordpress .dream-link-card img {
+    flex: 0 0 auto;
+    width: 4rem;
+    height: 4rem;
+    padding: 2px;
+    border: 2px solid color-mix(in srgb, var(--theme) 45%, transparent);
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.dream2-wordpress .dream-link-card span {
+    min-width: 0;
+    flex: 1;
+}
+
+.dream2-wordpress .dream-link-card span,
+.dream2-wordpress .dream-link-card small {
+    display: block;
+}
+
+.dream2-wordpress .dream-link-card strong {
+    display: block;
+    overflow: hidden;
+    color: var(--theme);
+    font-weight: 400;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.dream2-wordpress .dream-link-card small {
+    overflow: hidden;
+    margin-top: .45rem;
+    padding-top: .4rem;
+    border-top: 1px dashed rgba(127, 127, 127, .3);
+    color: var(--dark-d);
+    line-height: 1.5;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.dream2-wordpress .dream-link-exchange {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--bg-c);
+}
+
+.dream2-wordpress .dream-link-application {
+    margin-top: 1.4rem;
+    padding: 1rem;
+    border: 1px solid rgba(127, 127, 127, .18);
+    border-radius: .75rem;
+    background: color-mix(in srgb, var(--theme) 4%, transparent);
+}
+
+.dream2-wordpress .dream-link-application h2 {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    margin: 0 0 .45rem;
+    background: none;
+    color: var(--main);
+    font-size: 1.1rem;
+    line-height: 1.4;
+}
+
+.dream2-wordpress .dream-link-application h2::before,
+.dream2-wordpress .dream-link-application h2::after {
+    content: none;
+    display: none;
+}
+
+.dream2-wordpress .dream-link-application h2 i {
+    color: var(--theme);
+}
+
+.dream2-wordpress .dream-link-application-help {
+    margin: 0 0 .85rem;
+    color: var(--main-a);
+    font-size: .9rem;
+    line-height: 1.6;
+}
+
+.dream2-wordpress .dream-link-application-notice {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    margin: 0 0 .85rem;
+    padding: .65rem .75rem;
+    border-radius: .55rem;
+    font-size: .9rem;
+    line-height: 1.5;
+}
+
+.dream2-wordpress .dream-link-application-notice.is-success {
+    color: #18725b;
+    background: color-mix(in srgb, #48cfa6 14%, var(--background));
+}
+
+.dream2-wordpress .dream-link-application-notice.is-error {
+    color: #a83246;
+    background: color-mix(in srgb, #e84a5f 12%, var(--background));
+}
+
+.dream2-wordpress .dream-link-application-notice.is-info {
+    color: var(--theme);
+    background: color-mix(in srgb, var(--theme) 10%, var(--background));
+}
+
+.dream2-wordpress .dream-link-application-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .75rem;
+}
+
+.dream2-wordpress .dream-link-application-form label {
+    display: block;
+    min-width: 0;
+    margin: 0;
+    color: var(--main-a);
+    font-size: .82rem;
+}
+
+.dream2-wordpress .dream-link-application-form input,
+.dream2-wordpress .dream-link-application-form textarea {
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: .3rem;
+    padding: .65rem .7rem;
+    border: 1px solid rgba(127, 127, 127, .25);
+    border-radius: .55rem;
+    color: var(--main);
+    background: var(--background);
+}
+
+.dream2-wordpress .dream-link-application-form input {
+    height: 38px;
+}
+
+.dream2-wordpress .dream-link-application-form textarea {
+    display: block;
+    resize: vertical;
+}
+
+.dream2-wordpress .dream-link-application-form[aria-busy="true"] {
+    opacity: .72;
+    pointer-events: none;
+}
+
+.dream2-wordpress .dream-link-application-wide,
+.dream2-wordpress .dream-link-application-actions {
+    grid-column: 1 / -1;
+}
+
+.dream2-wordpress .dream-link-application-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin: 0;
+}
+
+.dream2-wordpress .dream-link-application-actions .dream-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    min-height: 38px;
+}
+
+.dream2-wordpress .dream-software-hero {
+    position: relative;
+    margin-bottom: 1.4rem;
+    padding: .2rem 0 1.25rem;
+    border-bottom: 1px solid var(--bg-c);
+}
+
+.dream2-wordpress .dream-software-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin-bottom: .8rem;
+    padding: .25rem .7rem;
+    border: 1px solid color-mix(in srgb, var(--theme) 35%, transparent);
+    border-radius: 999px;
+    color: var(--theme);
+    background: color-mix(in srgb, var(--theme) 8%, transparent);
+    font-size: .85rem;
+}
+
+.dream2-wordpress .dream-software-hero .title {
+    margin-bottom: .75rem;
+}
+
+.dream2-wordpress .dream-software-intro {
+    color: var(--dark-d);
+    line-height: 1.8;
+}
+
+.dream2-wordpress .dream-software-intro > :last-child {
+    margin-bottom: 0;
+}
+
+.dream2-wordpress .dream-software-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+    margin-top: 1rem;
+}
+
+.dream2-wordpress .dream-software-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .32rem .7rem;
+    border-radius: 999px;
+    color: var(--dark-c);
+    background: var(--background);
+    box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .12);
+    font-size: .85rem;
+}
+
+.dream2-wordpress .dream-software-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: 1rem;
+}
+
+.dream2-wordpress .dream-software-card {
+    min-width: 0;
+}
+
+.dream2-wordpress .dream-software-card-inner {
+    display: grid;
+    grid-template-columns: 4.25rem minmax(0, 1fr) 2.2rem;
+    align-items: center;
+    gap: .85rem;
+    height: 100%;
+    padding: 1rem;
+    border: 1px solid rgba(127, 127, 127, .16);
+    border-radius: .75rem;
+    background: color-mix(in srgb, var(--background) 86%, transparent);
+    transition: border-color .2s, transform .2s, box-shadow .2s;
+}
+
+.dream2-wordpress .dream-software-card-inner:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--theme) 55%, transparent);
+    box-shadow: var(--box-shadow);
+}
+
+.dream2-wordpress .dream-software-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 4.25rem;
+    height: 4.25rem;
+    padding: .55rem;
+    border-radius: 1rem;
+    background: #fff;
+    box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .12);
+}
+
+.dream2-wordpress .dream-software-icon img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.dream2-wordpress .dream-software-body {
+    min-width: 0;
+}
+
+.dream2-wordpress .dream-software-title {
+    display: block;
+    overflow: hidden;
+    color: var(--main);
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.dream2-wordpress .dream-software-title:hover,
+.dream2-wordpress .dream-software-desc a:hover {
+    color: var(--theme);
+}
+
+.dream2-wordpress .dream-software-desc {
+    display: -webkit-box;
+    overflow: hidden;
+    margin-top: .4rem;
+    color: var(--dark-d);
+    font-size: .9rem;
+    line-height: 1.6;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.dream2-wordpress .dream-software-desc a {
+    color: var(--theme);
+}
+
+.dream2-wordpress .dream-software-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    color: var(--theme);
+    background: color-mix(in srgb, var(--theme) 10%, transparent);
+    transition: color .2s, background .2s, transform .2s;
+}
+
+.dream2-wordpress .dream-software-action:hover {
+    color: #fff;
+    background: var(--theme);
+    transform: rotate(8deg);
+}
+
+.dream2-wordpress .dream-software-empty {
+    display: grid;
+    place-items: center;
+    gap: .7rem;
+    min-height: 12rem;
+    color: var(--dark-d);
+    text-align: center;
+}
+
+.dream2-wordpress .dream-software-empty i {
+    color: var(--theme);
+    font-size: 2.4rem;
+}
+
+.dream2-wordpress .column-main-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 1rem;
+    margin: 1rem 0 1.4rem;
+}
+
+.dream2-wordpress .column-main-grid .dream-grid-card {
+    margin: 0;
+}
+
+.dream2-wordpress .dream-grid-card .card-content {
+    padding: 1rem;
+}
+
+.dream2-wordpress .dream-grid-card .title {
+    margin-top: .6rem;
+    font-size: 1.1rem;
+}
+
+.dream2-wordpress .dream-love-avatars {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.dream2-wordpress .dream-love-avatars img {
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.dream2-wordpress .dream-love-avatars > i {
+    color: #ef476f;
+    font-size: 1.7rem;
+}
+
+.dream2-wordpress .dream-love-time {
+    margin: 0 0 1rem;
+    text-align: center;
+    color: var(--dark-d);
+}
+
+.dream2-wordpress .dream-ad {
+    position: relative;
+    overflow: hidden;
+}
+
+.dream2-wordpress .dream-ad-tag,
+.dream2-wordpress .dream-ad-close {
+    position: absolute;
+    z-index: 2;
+    top: .5rem;
+}
+
+.dream2-wordpress .dream-ad-tag {
+    left: .5rem;
+    padding: .15rem .45rem;
+    border-radius: .3rem;
+    color: #fff;
+    background: rgba(0, 0, 0, .45);
+    font-size: .72rem;
+}
+
+.dream2-wordpress .dream-ad-close {
+    right: .5rem;
+    width: 1.8rem;
+    height: 1.8rem;
+    border: 0;
+    border-radius: 50%;
+    color: #fff;
+    background: rgba(0, 0, 0, .45);
+    cursor: pointer;
+}
+
+.dream2-wordpress .dream-color-tag {
+    color: var(--dream-tag-color) !important;
+    border-color: color-mix(in srgb, var(--dream-tag-color), transparent 45%) !important;
+}
+
+.dream2-wordpress .widget.profile .level-item {
+    min-width: 0;
+    flex-shrink: 1;
+}
+
+.dream2-wordpress .widget.profile .level-item .value {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: clamp(1.35rem, 1.7vw, 2rem);
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dream2-wordpress .widget.toc .toc-content {
+    max-height: 45vh;
+    overflow: auto;
+}
+
+.dream2-wordpress .widget.toc .toc-content .toc-level-h3 { padding-left: 1rem; }
+.dream2-wordpress .widget.toc .toc-content .toc-level-h4 { padding-left: 2rem; }
+.dream2-wordpress .widget.toc .toc-content .toc-level-h5 { padding-left: 3rem; }
+
+.dream2-wordpress .dream-drawer-toc ol {
+    max-height: 45vh;
+    overflow: auto;
+}
+
+.dream2-wordpress .dream-drawer-toc li {
+    margin: .4rem 0;
+}
+
+.dream2-wordpress .dream-drawer-toc .toc-level-h3 { padding-left: 1rem; }
+.dream2-wordpress .dream-drawer-toc .toc-level-h4 { padding-left: 2rem; }
+
+.dream2-wordpress .footer .dream-footer-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    gap: 1rem;
+    text-align: center;
+}
+
+.dream2-wordpress .footer .dream-footer-layout > li {
+    min-width: 0;
+}
+
+.dream2-wordpress .footer .dream-footer-info {
+    min-width: 0;
+}
+
+.dream2-wordpress .footer .dream-footer-widget {
+    justify-self: center;
+}
+
+.dream2-wordpress .footer .dream-footer-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: .2rem .5rem;
+    color: var(--dark-d);
+    line-height: 1.6;
+}
+
+.dream2-wordpress .footer .dream-footer-inline {
+    margin: 0;
+}
+
+.dream2-wordpress .footer .dream-footer-line a {
+    white-space: nowrap;
+}
+
+.dream2-wordpress .footer .dream-footer-dot {
+    color: var(--light-d);
+}
+
+.dream2-wordpress .footer .dream-footer-police {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+}
+
+.dream2-wordpress .footer .dream-footer-police-icon {
+    width: 1.1em;
+    height: 1.1em;
+}
+
+#websiteDate .stand {
+    margin: 0 .12rem;
+    color: var(--theme);
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .dream2-wordpress .footer .dream-footer-layout {
+        gap: 1rem;
+    }
+}
+
+.dream2-wordpress .dream-links-cover {
+    position: relative;
+    min-height: 17rem;
+    background-position: center;
+    background-size: cover;
+    overflow: hidden;
+}
+
+.dream2-wordpress .dream-links-cover .details {
+    position: absolute;
+    inset: auto 0 0;
+    padding: 4rem 1.5rem 1.2rem;
+    color: #fff;
+    background: linear-gradient(transparent, rgba(0, 0, 0, .7));
+}
+
+.dream2-wordpress .dream-link-exchange-avatar {
+    float: left;
+    width: 4rem;
+    height: 4rem;
+    margin: 0 1rem .5rem 0;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.dream2-wordpress .dream-recent-comment {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+}
+
+.dream2-wordpress .dream-recent-comment img {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+}
+
+.dream2-wordpress .dream-friends-stats {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 1rem 0;
+    color: var(--dark-d);
+    text-align: center;
+}
+
+.dream2-wordpress .dream-friends-stats strong {
+    display: block;
+    color: var(--theme);
+    font-size: 1.6rem;
+}
+
+.dream2-wordpress .post-navigation {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.dream2-wordpress .post-navigation a {
+    display: inline-flex;
+    align-items: center;
+}
+
+.dream2-wordpress .dream-widget {
+    padding: 1rem;
+}
+
+.dream2-wordpress .dream-author-card {
+    text-align: center;
+}
+
+.dream2-wordpress .dream-author-card .avatar {
+    border-radius: 50%;
+}
+
+.dream2-wordpress .widget ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dream2-wordpress .widget li {
+    margin: .45rem 0;
+}
+
+.dream-search-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: start center;
+    padding-top: 42px;
+    background: rgba(45, 54, 72, .45);
+}
+
+.dream-search-overlay[hidden] {
+    display: none;
+}
+
+.dream-search-card {
+    position: relative;
+    width: min(92vw, 580px);
+    padding: 10px 10px 0;
+    overflow: hidden;
+    color: var(--main);
+    background: var(--background);
+}
+
+.dream-search-close {
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.dream-search-card .search-form {
+    display: flex;
+    position: relative;
+}
+
+.dream-search-card label {
+    flex: 1;
+}
+
+.dream-search-card .search-field {
+    width: 100%;
+    height: 46px;
+    padding: 0 48px 0 38px;
+    border: 2px solid #45c2a6;
+    border-radius: 8px;
+    outline: 0;
+    color: var(--main);
+    background: var(--background-hover);
+    caret-color: var(--theme);
+    transition: background .2s, color .2s, border-color .2s;
+}
+
+html.night .dream-search-card {
+    background: var(--bg-b);
+}
+
+html.night .dream-search-card .search-field {
+    background: var(--bg-c);
+}
+
+.dream-search-card .search-field::placeholder {
+    color: var(--dark-d);
+}
+
+.dream-search-card .search-submit {
+    position: absolute;
+    left: 8px;
+    top: 7px;
+    border: 0 !important;
+    border-radius: 0;
+    padding: 0;
+    color: #45c2a6;
+    background: transparent;
+    font-size: 22px;
+}
+
+.dream-search-card .search-submit .screen-reader-text {
+    display: none;
+}
+
+.dream-search-empty {
+    display: grid;
+    place-items: center;
+    min-height: 70px;
+    color: var(--main);
+}
+
+.dream-search-results {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.dream-search-empty[hidden],
+.dream-search-results[hidden] {
+    display: none !important;
+}
+
+.dream-search-result {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    color: var(--main);
+    transition: background .2s, color .2s;
+}
+
+.dream-search-result:hover,
+.dream-search-result:focus {
+    color: #fff;
+    background: var(--theme);
+}
+
+.dream-search-results.is-keyboarding .dream-search-result:hover:not(.is-active) {
+    color: var(--main);
+    background: transparent;
+}
+
+.dream-search-result.is-active,
+.dream-search-results.is-keyboarding .dream-search-result.is-active {
+    color: #fff;
+    background: var(--theme);
+}
+
+.dream-search-result-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dream-search-result-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    min-width: 32px;
+    height: 22px;
+    padding: 3px 6px;
+    border-radius: 4px;
+    border: 1px solid var(--light-b);
+    color: var(--dark-d);
+    background: var(--bg-d);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .12), inset 0 1px 0 rgba(255, 255, 255, .35);
+    font-size: 12px;
+    line-height: 1;
+    text-align: center;
+}
+
+.dream-search-enter-symbol {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1em;
+    height: 1em;
+    font-family: Arial, "Helvetica Neue", sans-serif;
+    font-size: 14px;
+    line-height: 1;
+    transform: translateY(1px);
+}
+
+.dream-search-enter-symbol::before {
+    content: "↵";
+}
+
+.dream-search-result.is-active .dream-search-result-action {
+    color: var(--theme);
+    background: #fff;
+    border-color: rgba(255, 255, 255, .9);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .18);
+}
+
+.dream-search-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 14px;
+    margin: 0 -10px;
+    padding: 10px;
+    border-top: 1px solid var(--light-b);
+    background: var(--background);
+    font-size: 12px;
+}
+
+html.night .dream-search-footer {
+    background: var(--bg-b);
+}
+
+.dream-search-footer span,
+.dream-search-footer button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.dream-search-footer kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    padding: 3px 5px;
+    border: 1px solid var(--light-b);
+    border-radius: 4px;
+    color: var(--main);
+    background: var(--bg-d);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .12), inset 0 1px 0 rgba(255, 255, 255, .35);
+    text-align: center;
+    font: inherit;
+    line-height: 1;
+}
+
+html.night .dream-search-result-action,
+html.night .dream-search-footer kbd {
+    border-color: rgba(255, 255, 255, .12);
+    background: #353b46;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+.dream-submit {
+    border: 0;
+    border-radius: 999px;
+    padding: .7rem 1rem;
+    color: #fff;
+    background: var(--theme);
+    cursor: pointer;
+}
+
+.dream2-wordpress .comment-list,
+.dream2-wordpress .comment-list .children {
+    list-style: none;
+    margin: 0;
+    padding-left: 0;
+}
+
+.dream2-wordpress .column-main > .pagination,
+.dream2-wordpress .card + .pagination {
+    margin-top: 1.4rem;
+}
+
+.dream2-wordpress .dream-comment-widget {
+    padding: 1rem;
+}
+
+.dream2-wordpress .dream-comment-widget .comment-title,
+.dream2-wordpress .dream-comment-widget .comment-reply-title {
+    margin: 0 0 .8rem;
+    font-size: 1.15rem;
+    line-height: 1.4;
+}
+
+.dream2-wordpress .dream-comment-widget .comment-reply-title i {
+    margin-right: .35rem;
+    color: var(--theme);
+}
+
+.dream2-wordpress .dream-comment {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    align-items: start;
+    width: auto;
+    min-width: 0;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.dream2-wordpress .comment-list .children {
+    grid-column: 1 / -1;
+    width: auto;
+    margin-left: 1.25rem;
+}
+
+.dream2-wordpress .dream-comment > .media-left {
+    grid-column: 1;
+}
+
+.dream2-wordpress .dream-comment > .media-content {
+    grid-column: 2;
+}
+
+.dream2-wordpress .dream-comment > #respond {
+    grid-column: 1 / -1;
+    width: 100%;
+}
+
+.dream2-wordpress .dream-comment .media-content {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.dream2-wordpress .dream-comment .avatar {
+    border-radius: 50%;
+}
+
+.dream2-wordpress .dream-comment-notice {
+    display: flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: .5rem;
+    margin: .2rem 0 .9rem;
+    padding: .65rem .75rem;
+    border: 1px solid color-mix(in srgb, #e84a5f 28%, transparent);
+    border-radius: .5rem;
+    color: var(--main);
+    background: color-mix(in srgb, #e84a5f 8%, var(--background));
+    font-size: .86rem;
+}
+
+.dream2-wordpress .dream-comment-notice > i {
+    flex: 0 0 auto;
+    color: #e84a5f;
+    font-size: 1rem;
+}
+
+.dream2-wordpress .dream-comment-notice > a {
+    flex: 0 0 auto;
+    margin-left: auto;
+    color: var(--theme);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dream2-wordpress .comment-form input:not([type="submit"]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.dream2-wordpress .comment-form textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: .7rem;
+    border: 1px solid rgba(127, 127, 127, .25);
+    border-radius: .6rem;
+    color: var(--main);
+    background: var(--background);
+}
+
+.dream2-wordpress .dream-comment-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+    align-items: end;
+    gap: .65rem;
+}
+
+.dream2-wordpress .dream-comment-form > * {
+    min-width: 0;
+}
+
+.dream2-wordpress .dream-comment-form .dream-comment-editor,
+.dream2-wordpress .dream-comment-form .logged-in-as {
+    grid-column: 1 / -1;
+}
+
+.dream2-wordpress .dream-comment-form .comment-form-author,
+.dream2-wordpress .dream-comment-form .comment-form-email,
+.dream2-wordpress .dream-comment-form .comment-form-url {
+    margin-bottom: 0;
+}
+
+.dream2-wordpress .dream-comment-form label:not(.screen-reader-text) {
+    display: block;
+    margin-bottom: .3rem;
+    font-size: .82rem;
+    color: var(--main-a);
+}
+
+.dream2-wordpress .dream-comment-editor {
+    overflow: visible;
+    border: 1px solid rgba(127, 127, 127, .32);
+    border-radius: .5rem;
+    background: var(--background);
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.dream2-wordpress .dream-comment-editor:focus-within {
+    border-color: var(--theme);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--theme) 15%, transparent);
+}
+
+.dream2-wordpress .dream-comment-editor .comment-form-comment {
+    margin: 0;
+}
+
+.dream2-wordpress .dream-comment-editor textarea {
+    min-height: 92px;
+    padding: .75rem;
+    border: 0;
+    border-radius: 0;
+    outline: 0;
+    background: transparent;
+}
+
+.dream2-wordpress .dream-comment-editor .dream-comment-source {
+    display: none;
+}
+
+.dream2-wordpress .dream-comment-rich-editor {
+    min-height: 92px;
+    padding: .75rem;
+    outline: 0;
+    overflow-wrap: anywhere;
+}
+
+.dream2-wordpress .dream-comment-rich-editor:empty::before {
+    content: attr(data-placeholder);
+    color: var(--main-a);
+    pointer-events: none;
+}
+
+.dream2-wordpress .dream-comment-rich-editor blockquote {
+    margin: .35rem 0;
+    padding-left: .8rem;
+    border-left: 3px solid var(--theme);
+}
+
+.dream2-wordpress .dream-comment-rich-editor pre {
+    overflow-x: auto;
+    margin: .35rem 0;
+    padding: .6rem;
+    border-radius: .35rem;
+    background: var(--bg-b);
+}
+
+.dream2-wordpress .dream-comment-toolbar {
+    display: flex;
+    align-items: center;
+    gap: .95rem;
+    min-height: 38px;
+    padding: 0 .75rem;
+    border-top: 1px solid rgba(127, 127, 127, .16);
+    color: var(--main);
+}
+
+.dream2-wordpress .dream-comment-toolbar i {
+    font-size: 1rem;
+}
+
+.dream2-wordpress .dream-comment-toolbar button {
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    cursor: pointer;
+}
+
+.dream2-wordpress .dream-comment-toolbar button:hover,
+.dream2-wordpress .dream-comment-toolbar button:focus-visible,
+.dream2-wordpress .dream-comment-toolbar button.is-active {
+    color: var(--theme);
+    outline: 0;
+}
+
+.dream2-wordpress .dream-comment-toolbar button.is-active {
+    background: color-mix(in srgb, var(--theme) 14%, transparent);
+    border-radius: 4px;
+}
+
+.dream2-wordpress .dream-comment-editor {
+    position: relative;
+}
+
+.dream2-wordpress .dream-comment-emoji-picker {
+    position: absolute;
+    z-index: 30;
+    top: 0;
+    left: 0;
+    display: none;
+    width: 370px;
+    max-width: calc(100vw - 3rem);
+    padding: 0;
+    border: 1px solid var(--light-b);
+    border-radius: 8px;
+    background: var(--background);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .18);
+}
+
+.dream2-wordpress .dream-comment-emoji-picker.is-open {
+    display: block;
+}
+
+.dream2-wordpress .dream-comment-emoji-tabs {
+    display: flex;
+    gap: .25rem;
+    padding: .55rem .55rem 0;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--light-b);
+}
+
+.dream2-wordpress .dream-comment-emoji-tabs .dream-comment-emoji-tab {
+    flex: 0 0 auto;
+    padding: .35rem .55rem;
+    border: 0;
+    border-radius: 5px 5px 0 0;
+    color: var(--main);
+    background: transparent;
+    cursor: pointer;
+}
+
+.dream2-wordpress .dream-comment-emoji-tabs .dream-comment-emoji-tab.is-active {
+    color: var(--theme);
+    background: color-mix(in srgb, var(--theme) 14%, transparent);
+}
+
+.dream2-wordpress .dream-comment-emoji-group {
+    display: none;
+    grid-template-columns: repeat(8, 38px);
+    gap: .25rem;
+    max-height: 260px;
+    padding: .65rem;
+    overflow-y: auto;
+}
+
+.dream2-wordpress .dream-comment-emoji-group.is-active {
+    display: grid;
+}
+
+.dream2-wordpress .dream-comment-emoji-picker .dream-comment-emoji {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    cursor: pointer;
+}
+
+.dream2-wordpress .dream-comment-emoji-picker .dream-comment-emoji img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+}
+
+.dream2-wordpress .dream-comment-rich-editor .dream-comment-emoji-image,
+.dream2-wordpress .comment-content .dream-comment-emoji-rendered {
+    display: inline-block;
+    width: 2.3em;
+    height: 2.3em;
+    margin: 0 .12em;
+    object-fit: contain;
+    vertical-align: middle;
+}
+
+.dream2-wordpress .dream-comment-emoji-picker .dream-comment-emoji:hover,
+.dream2-wordpress .dream-comment-emoji-picker .dream-comment-emoji:focus-visible {
+    background: var(--bg-c);
+    outline: 0;
+}
+
+@media (max-width: 520px) {
+    .dream2-wordpress .dream-comment-emoji-picker {
+        width: min(330px, calc(100vw - 3rem));
+    }
+
+    .dream2-wordpress .dream-comment-emoji-group {
+        grid-template-columns: repeat(7, 38px);
+    }
+}
+
+.dream2-wordpress .dream-comment-form .logged-in-as {
+    flex: 1 1 auto;
+    margin: 0;
+    font-weight: 600;
+}
+
+.dream2-wordpress .dream-comment-form .form-submit {
+    align-self: end;
+    justify-self: end;
+    margin: 0;
+    padding-bottom: 3px;
+}
+
+.dream2-wordpress .dream-comment-form .logged-in-as ~ .form-submit {
+    grid-column: 1 / -1;
+}
+
+.dream2-wordpress .dream-comment-form .form-submit .dream-submit {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    border-radius: .4rem;
+    padding: 0 .9rem;
+    background: #48cfa6;
+}
+
+.dream2-wordpress .comment-form p {
+    margin: 0 0 .75rem;
+}
+
+.dream2-wordpress .comment-form textarea {
+    display: block;
+    resize: vertical;
+}
+
+@media (max-width: 768px) {
+    .dream2-wordpress .dream-comment-form {
+        grid-template-columns: 1fr;
+    }
+
+    .dream2-wordpress .dream-comment-form .form-submit {
+        justify-self: end;
+    }
+}
+
+.dream2-wordpress .nav-links {
+    display: flex;
+    justify-content: space-between;
+}
+
+.dream2-wordpress .screen-reader-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+}
+
+.dream2-wordpress .photos-gallery .info i {
+    width: 1.1rem;
+    font-size: 1.1rem;
+}
+
+.dream2-wordpress .friends .meta img {
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+@media (max-width: 768px) {
+    .dream2-wordpress .comment-list .children {
+        margin-left: .65rem;
+    }
+
+    .dream2-wordpress .dream-comment {
+        grid-template-columns: 36px minmax(0, 1fr);
+        gap: .55rem;
+    }
+
+    .dream2-wordpress .dream-comment .avatar {
+        width: 36px;
+        height: 36px;
+    }
+
+    .dream2-wordpress .column-side {
+        display: none !important;
+    }
+
+    .dream2-wordpress .column-main {
+        width: 100%;
+    }
+
+    .dream2-wordpress .dream-links-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dream2-wordpress .dream-link-application-form {
+        grid-template-columns: 1fr;
+    }
+
+    .dream2-wordpress .dream-single-cover {
+        min-height: 17rem;
+    }
+}
+.dream2-wordpress .dream-comment-form .dream-comment-toolbar .dream-private-comment-field {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    width: auto;
+    min-width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    margin: 0 0 0 auto;
+    padding: 0 .5rem;
+    border-radius: 4px;
+    box-sizing: border-box;
+    white-space: nowrap;
+    font-size: .82rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.dream-private-comment-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+.dream-private-comment-field i {
+    display: inline-grid;
+    place-items: center;
+    line-height: 1;
+    font-size: 1rem;
+}
+
+.dream-private-comment-field span {
+    line-height: 1;
+}
+
+@media (max-width: 480px) {
+    .dream2-wordpress .dream-comment-toolbar {
+        gap: .55rem;
+    }
+
+    .dream-private-comment-field span {
+        display: none;
+    }
+
+    .dream-private-comment-field {
+        justify-content: center;
+        width: 28px;
+        padding: 0;
+    }
+}
+
+.dream-private-comment-notice,
+.dream-private-comment-hidden {
+    margin: 0 0 .5rem;
+    color: var(--theme, #50bfff);
+    font-size: .875rem;
+}
+
+.dream-private-comment-hidden {
+    margin-bottom: 0;
+    opacity: .8;
+}
+
+.dream-private-comment-notice i,
+.dream-private-comment-hidden i {
+    margin-right: .3rem;
+}
