@@ -1,7 +1,7 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: dream2-mxin 0.7.41\n"
-"POT-Creation-Date: 2026-08-10 02:26+0800\n"
+"Project-Id-Version: dream2-mxin 0.8.0\n"
+"POT-Creation-Date: 2026-08-10 16:39+0800\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -19,7 +19,7 @@ msgstr ""
 msgid "%s 条评论"
 msgstr ""
 
-#: functions.php:568
+#: functions.php:581
 msgid "Dream 文章设置"
 msgstr ""
 
@@ -55,7 +55,7 @@ msgstr ""
 msgid "下午好"
 msgstr ""
 
-#: functions.php:589
+#: functions.php:602
 msgid "不显示封面"
 msgstr ""
 
@@ -63,7 +63,7 @@ msgstr ""
 msgid "中午好"
 msgstr ""
 
-#: functions.php:56 header.php:26
+#: functions.php:62 header.php:26
 msgid "主导航"
 msgstr ""
 
@@ -83,7 +83,7 @@ msgstr ""
 msgid "作者"
 msgstr ""
 
-#: functions.php:388
+#: functions.php:398
 msgid "你别走呀 (´；ω；`)"
 msgstr ""
 
@@ -127,7 +127,7 @@ msgstr ""
 msgid "发布于"
 msgstr ""
 
-#: functions.php:215
+#: functions.php:221
 msgid "右侧边栏"
 msgstr ""
 
@@ -163,7 +163,7 @@ msgstr ""
 msgid "夜深啦"
 msgstr ""
 
-#: functions.php:589
+#: functions.php:602
 msgid "大图卡片"
 msgstr ""
 
@@ -183,15 +183,15 @@ msgstr ""
 msgid "导航"
 msgstr ""
 
-#: functions.php:587
+#: functions.php:600
 msgid "封面显示模式"
 msgstr ""
 
-#: functions.php:589
+#: functions.php:602
 msgid "小图卡片"
 msgstr ""
 
-#: functions.php:214
+#: functions.php:220
 msgid "左侧边栏"
 msgstr ""
 
@@ -223,7 +223,7 @@ msgstr ""
 msgid "打开导航"
 msgstr ""
 
-#: functions.php:589
+#: functions.php:602
 msgid "折叠封面"
 msgstr ""
 
@@ -251,11 +251,11 @@ msgstr ""
 msgid "文章"
 msgstr ""
 
-#: functions.php:136
+#: functions.php:142
 msgid "文章归档"
 msgstr ""
 
-#: functions.php:583
+#: functions.php:596
 msgid "文章提示文字"
 msgstr ""
 
@@ -323,7 +323,7 @@ msgstr ""
 msgid "次"
 msgstr ""
 
-#: functions.php:389
+#: functions.php:399
 msgid "欢迎回来 (｡･ω･｡)"
 msgstr ""
 
@@ -367,7 +367,7 @@ msgstr ""
 msgid "置顶"
 msgstr ""
 
-#: functions.php:589
+#: functions.php:602
 msgid "背景封面"
 msgstr ""
 
@@ -415,7 +415,7 @@ msgstr ""
 msgid "评论内容"
 msgstr ""
 
-#: functions.php:589
+#: functions.php:602
 msgid "跟随主题"
 msgstr ""
 
@@ -427,7 +427,7 @@ msgstr ""
 msgid "输入关键词…"
 msgstr ""
 
-#: footer.php:22 functions.php:424
+#: footer.php:22 functions.php:434
 msgid "返回顶部"
 msgstr ""
 
@@ -475,11 +475,11 @@ msgstr ""
 msgid "音乐"
 msgstr ""
 
-#: functions.php:57
+#: functions.php:63
 msgid "页脚导航"
 msgstr ""
 
-#: functions.php:216
+#: functions.php:222
 msgid "页脚组件区"
 msgstr ""
 
