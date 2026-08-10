@@ -37,10 +37,14 @@ See the project documentation for attribution details.
 
 == Changelog ==
 
+= Unreleased =
+* Merged the clean WordPress.org-safe theme source into the main theme tree.
+* Removed the separate theme distribution overlay and legacy development preview images.
+
 = 0.8.0 =
 * Split private comments, comment emojis, link management, SMTP notifications, and mail logs into the optional Dream 2.0 MXIN Plus plugin.
-* Added a WordPress.org distribution that works without the companion plugin and makes no optional third-party service requests.
-* Added complete third-party library attribution and separate full/WordPress.org release packages.
+* Added a clean theme package that works without the companion plugin and makes no optional third-party service requests.
+* Added complete third-party library attribution.
 
 = 0.7.41 =
 * Changed the WordPress theme distribution license to GPLv2 or later while retaining upstream MIT attribution.
