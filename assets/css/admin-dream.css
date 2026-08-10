@@ -105,13 +105,48 @@
     font-family: "Microsoft YaHei", Arial, "PingFang SC", sans-serif;
 }
 
-.dream2-link-manager.dream2-options-wrap {
+.dream2-link-manager.dream2-options-wrap,
+.dream2-plus-settings.dream2-options-wrap,
+.dream2-mail-log.dream2-options-wrap {
     width: min(1440px, calc(100% - 30px));
 }
 
 .dream2-link-manager-content {
     padding: 26px 16px 18px;
     background: #fff;
+}
+
+.dream2-plus-settings-form {
+    margin: 0;
+}
+
+.dream2-plus-settings-content {
+    min-height: 610px;
+    padding: 26px 16px 18px;
+    background: #fff;
+}
+
+.dream2-plus-settings-note {
+    margin: 0 0 18px;
+    padding: 0 4px;
+}
+
+.dream2-plus-settings .dream2-settings-panel {
+    margin: 0 0 18px;
+    border-radius: 8px;
+    box-shadow: none;
+}
+
+.dream2-plus-section-body {
+    padding: 18px 20px 20px;
+}
+
+.dream2-plus-section-body > .description {
+    margin: 0 0 18px;
+}
+
+.dream2-plus-settings .dream2-option-group {
+    margin: 0;
 }
 
 .dream2-link-page-heading {
@@ -418,6 +453,8 @@
 
 .dream2-option input[type="text"],
 .dream2-option input[type="url"],
+.dream2-option input[type="email"],
+.dream2-option input[type="password"],
 .dream2-option input[type="date"],
 .dream2-option input[type="number"],
 .dream2-option textarea,
@@ -463,6 +500,8 @@
 
 .dream2-option input[type="text"]:focus,
 .dream2-option input[type="url"]:focus,
+.dream2-option input[type="email"]:focus,
+.dream2-option input[type="password"]:focus,
 .dream2-option input[type="date"]:focus,
 .dream2-option input[type="number"]:focus,
 .dream2-option textarea:focus,
@@ -531,7 +570,8 @@
     color: var(--dream-admin-main);
 }
 
-.dream2-radio-group input[type="radio"] {
+.dream2-radio-group input[type="radio"],
+.dream2-radio-group input[type="checkbox"] {
     margin: 0;
 }
 
@@ -1580,7 +1620,7 @@
 }
 
 .dream2-mail-log {
-    max-width: 1600px;
+    max-width: none;
     overflow: hidden;
     border-radius: 10px;
     background: #fff;
@@ -1778,11 +1818,17 @@
         margin: 20px 10px 0 0;
     }
 
-    .dream2-link-manager.dream2-options-wrap {
+    .dream2-link-manager.dream2-options-wrap,
+    .dream2-plus-settings.dream2-options-wrap,
+    .dream2-mail-log.dream2-options-wrap {
         width: calc(100% - 20px);
     }
 
     .dream2-link-manager-content {
+        padding: 20px 12px 14px;
+    }
+
+    .dream2-plus-settings-content {
         padding: 20px 12px 14px;
     }
 
