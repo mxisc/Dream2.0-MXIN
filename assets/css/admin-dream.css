@@ -126,11 +126,6 @@
     background: #fff;
 }
 
-.dream2-plus-settings-note {
-    margin: 0 0 18px;
-    padding: 0 4px;
-}
-
 .dream2-plus-settings-board {
     position: relative;
     overflow: hidden;
@@ -148,20 +143,23 @@
 }
 
 .dream2-plus-settings-section {
-    display: grid;
-    grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
-    gap: 28px;
-    padding: 28px 20px 24px;
+    display: block;
+    padding: 26px 20px 28px;
     border-top: 1px solid #eef2f7;
 }
 
 .dream2-plus-settings-section:first-child {
     border-top: 0;
-    padding-top: 32px;
+    padding-top: 30px;
 }
 
 .dream2-plus-section-heading {
+    display: flex;
+    align-items: center;
     min-width: 0;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eef2f7;
 }
 
 .dream2-plus-section-heading h2 {
@@ -182,15 +180,8 @@
     background: var(--dream-admin-theme);
 }
 
-.dream2-plus-section-heading .description {
-    margin: 10px 0 0 12px;
-    color: var(--dream-admin-muted) !important;
-    line-height: 1.7;
-}
-
 .dream2-plus-section-fields {
     min-width: 0;
-    padding-top: 14px;
 }
 
 .dream2-plus-settings .dream2-option-group {
@@ -1850,16 +1841,6 @@
 @media (max-width: 1100px) {
     .dream2-settings-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .dream2-plus-settings-section {
-        grid-template-columns: minmax(0, 1fr);
-        gap: 18px;
-        padding: 26px 16px 22px;
-    }
-
-    .dream2-plus-section-fields {
-        padding-top: 0;
     }
 
     .dream2-settings-field.is-wide,
