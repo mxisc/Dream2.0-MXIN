@@ -200,12 +200,6 @@
     border-color: #e8edf5;
 }
 
-.dream2-plus-settings .dream2-option > label:first-child {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
 .dream2-link-page-heading {
     display: flex;
     align-items: center;
