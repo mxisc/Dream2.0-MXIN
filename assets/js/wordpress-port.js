@@ -42,8 +42,18 @@
         element.textContent = '';
         var length = 0;
         var deleting = false;
+        var timer = 0;
+
+        function schedule(delay) {
+            timer = window.setTimeout(update, delay);
+            element._dreamBannerTypingTimer = timer;
+        }
 
         function update() {
+            if (!element.isConnected) {
+                window.clearTimeout(timer);
+                return;
+            }
             if (deleting) {
                 length--;
             } else {
@@ -53,21 +63,27 @@
 
             if (!deleting && length === characters.length) {
                 deleting = true;
-                window.setTimeout(update, 500);
+                schedule(500);
                 return;
             }
             if (deleting && length === 0) {
                 deleting = false;
-                window.setTimeout(update, 500);
+                schedule(500);
                 return;
             }
-            window.setTimeout(update, deleting ? 80 : 500);
+            schedule(deleting ? 80 : 500);
         }
 
-        window.setTimeout(update, 500);
+        schedule(500);
     }
 
     initializeBannerTyping();
+    document.addEventListener('dream2:page-loaded', initializeBannerTyping);
+    document.addEventListener('dream2:page-leaving', function () {
+        document.querySelectorAll('.banner-info-desc').forEach(function (element) {
+            if (element._dreamBannerTypingTimer) window.clearTimeout(element._dreamBannerTypingTimer);
+        });
+    });
 
     if (!isMobileDevice()) {
         (Dream2WP.desktopEffectScripts || []).forEach(function (path) {
@@ -82,24 +98,45 @@
     }
 
     function replaceBrokenAvatar(image) {
-        if (!image || !image.matches('.dream-link-card img, .friends .meta img, .dream-comment img.avatar, .dream-recent-comment img')) return;
+        if (!image || (!image.dataset.dreamAvatarFallbacks && !image.dataset.dreamAvatarFallback && !image.matches('.dream-link-card img, .friends .meta img, .dream-comment img.avatar, .dream-recent-comment img'))) return;
         image.removeAttribute('srcset');
         image.removeAttribute('sizes');
+        var fallbacks = (image.dataset.dreamAvatarFallbacks || '').split('|').filter(Boolean);
+        var fallbackIndex = parseInt(image.dataset.avatarFallbackIndex || '0', 10);
+        if (fallbacks[fallbackIndex]) {
+            image.dataset.avatarFallbackIndex = String(fallbackIndex + 1);
+            image.src = fallbacks[fallbackIndex];
+            scheduleAvatarFallbackTimeout(image);
+            return;
+        }
         if (image.dataset.dreamAvatarFallback && image.dataset.avatarFallback !== 'existing') {
             image.dataset.avatarFallback = 'existing';
             image.src = image.dataset.dreamAvatarFallback;
+            scheduleAvatarFallbackTimeout(image);
             return;
         }
         if (image.dataset.avatarFallback === 'default') return;
         image.dataset.avatarFallback = 'default';
         image.src = Dream2WP.defaultAvatar;
     }
+    function scheduleAvatarFallbackTimeout(image) {
+        if (!image || (!image.dataset.dreamAvatarFallbacks && !image.dataset.dreamAvatarFallback)) return;
+        if (image.dataset.avatarFallbackTimer) window.clearTimeout(Number(image.dataset.avatarFallbackTimer));
+        image.dataset.avatarFallbackTimer = String(window.setTimeout(function () {
+            if (!image.complete || image.naturalWidth === 0) replaceBrokenAvatar(image);
+        }, 5000));
+    }
     document.addEventListener('error', function (event) { replaceBrokenAvatar(event.target); }, true);
     window.addEventListener('load', function () {
-        document.querySelectorAll('.dream-link-card img, .friends .meta img, .dream-comment img.avatar, .dream-recent-comment img').forEach(function (image) {
+        document.querySelectorAll('.dream-link-card img, .friends .meta img, .dream-comment img.avatar, .dream-recent-comment img, img[data-dream-avatar-fallbacks], img[data-dream-avatar-fallback]').forEach(function (image) {
             if (image.complete && image.naturalWidth === 0) replaceBrokenAvatar(image);
         });
     });
+    function initializeAvatarFallbackTimeouts(root) {
+        (root || document).querySelectorAll('img[data-dream-avatar-fallbacks], img[data-dream-avatar-fallback]').forEach(scheduleAvatarFallbackTimeout);
+    }
+    initializeAvatarFallbackTimeouts(document);
+    document.addEventListener('dream2:page-loaded', function () { initializeAvatarFallbackTimeouts(document); });
 
     function initializeSafeAvatars(root) {
         (root || document).querySelectorAll('img[data-dream-avatar]:not([data-avatar-loading])').forEach(function (image) {
@@ -141,7 +178,7 @@
             if (emojiButton) {
                 emojiButton.title = '选择表情';
                 emojiButton.setAttribute('aria-label', '选择表情');
-                emojiButton.hidden = !(Dream2WP.emojiGroups || []).length;
+                emojiButton.hidden = !Dream2WP.emojiEndpoint && !(Dream2WP.emojiGroups || []).length;
             }
             var privateInput = editor.closest('.dream-comment-editor').querySelector('.dream-private-comment-input');
             if (privateInput) syncPrivateCommentControl(privateInput);
@@ -177,20 +214,53 @@
     initializeCommentEditors(document);
     document.addEventListener('dream2:page-loaded', function () { initializeCommentEditors(document); });
 
+    var commentEmojiGroupsPromise = null;
+    function updateCommentEmojiButtons(groups) {
+        document.querySelectorAll('[data-comment-action="emoji"]').forEach(function (button) {
+            button.hidden = !groups.length;
+            button.removeAttribute('aria-busy');
+            button.disabled = false;
+        });
+    }
+    function loadCommentEmojiGroups() {
+        var groups = Dream2WP.emojiGroups || window.emojiLists || [];
+        if (groups.length || !Dream2WP.emojiEndpoint || !window.fetch) {
+            return Promise.resolve(groups);
+        }
+        if (commentEmojiGroupsPromise) return commentEmojiGroupsPromise;
+        document.querySelectorAll('[data-comment-action="emoji"]').forEach(function (button) {
+            button.setAttribute('aria-busy', 'true');
+            button.disabled = true;
+        });
+        commentEmojiGroupsPromise = window.fetch(Dream2WP.emojiEndpoint, {
+            credentials: 'same-origin',
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        }).then(function (response) {
+            if (!response.ok) throw new Error('Emoji request failed');
+            return response.json();
+        }).then(function (response) {
+            var loadedGroups = response && response.success && response.data && Array.isArray(response.data.groups)
+                ? response.data.groups
+                : [];
+            Dream2WP.emojiGroups = loadedGroups;
+            updateCommentEmojiButtons(loadedGroups);
+            renderCommentEmojis(document);
+            return loadedGroups;
+        }).catch(function () {
+            commentEmojiGroupsPromise = null;
+            document.querySelectorAll('[data-comment-action="emoji"]').forEach(function (button) {
+                button.hidden = false;
+                button.removeAttribute('aria-busy');
+                button.disabled = false;
+            });
+            return [];
+        });
+        return commentEmojiGroupsPromise;
+    }
+
     function commentEmojiEntries(group) {
         var entries = [];
-        if (group.items) {
-            group.items.forEach(function (item) { entries.push([item.code, item.file, item.code, item.url]); });
-        } else if (group.emoji) {
-            Object.keys(group.emoji).forEach(function (alias) {
-                entries.push([alias, group.emoji[alias], group.placeholder.replace('{alias}', alias), Dream2WP.emojiBase + group.path + group.emoji[alias] + group.file]);
-            });
-        } else {
-            var excluded = group.excludeNums || [];
-            for (var index = 1; index <= group.maxNum; index += 1) {
-                if (excluded.indexOf(index) === -1) entries.push([String(index), String(index), group.placeholder.replace('{alias}', String(index)), Dream2WP.emojiBase + group.path + index + group.file]);
-            }
-        }
+        (group.items || []).forEach(function (item) { entries.push([item.code, item.file, item.code, item.url]); });
         return entries;
     }
 
@@ -510,7 +580,10 @@
         }
         var action = this.dataset.commentAction;
         if (action === 'emoji') {
-            toggleCommentEmojiPicker(editor, this);
+            var emojiButton = this;
+            loadCommentEmojiGroups().then(function (groups) {
+                if (groups.length && editor.isConnected) toggleCommentEmojiPicker(editor, emojiButton);
+            });
             return;
         }
         applyCommentFormat(editor, action);
@@ -606,114 +679,6 @@
             event.preventDefault();
             editor.focus();
         }
-    });
-
-    function showCommentIdentityNotice(form, message, loginUrl) {
-        var notice = form.querySelector('[data-dream-comment-identity-notice]');
-        if (!notice) {
-            notice = document.createElement('div');
-            notice.className = 'dream-comment-notice dream-comment-notice-error';
-            notice.setAttribute('role', 'alert');
-            notice.setAttribute('data-dream-comment-identity-notice', '');
-            form.insertBefore(notice, form.firstChild);
-        }
-
-        notice.textContent = '';
-        var icon = document.createElement('i');
-        icon.className = 'ri-error-warning-line';
-        icon.setAttribute('aria-hidden', 'true');
-        var text = document.createElement('span');
-        text.textContent = message;
-        var login = document.createElement('a');
-        login.href = loginUrl;
-        login.textContent = '立即登录';
-        notice.appendChild(icon);
-        notice.appendChild(text);
-        notice.appendChild(login);
-        window.requestAnimationFrame(function () {
-            notice.scrollIntoView({behavior: 'smooth', block: 'center'});
-        });
-    }
-
-    function submitCheckedCommentForm(form, submitter) {
-        form.removeAttribute('aria-busy');
-        delete form.dataset.dreamCommentEmailChecking;
-        if (submitter) submitter.disabled = false;
-        if (submitter && form.contains(submitter)) {
-            form.requestSubmit(submitter);
-        } else {
-            form.requestSubmit();
-        }
-    }
-
-    $(document).on('input', '.dream-comment-form input[name="email"]', function () {
-        delete this.form.dataset.dreamCommentEmailChecked;
-        var notice = this.form.querySelector('[data-dream-comment-identity-notice]');
-        if (notice) notice.remove();
-    });
-
-    $(document).on('submit', '.dream-comment-form', function (event) {
-        if (event.isDefaultPrevented()) return;
-        var form = this;
-        var emailInput = form.querySelector('input[name="email"]');
-        if (
-            !emailInput
-            || !window.fetch
-            || !window.FormData
-            || !Dream2WP.commentIdentityNonce
-        ) {
-            return;
-        }
-
-        var email = String(emailInput.value || '').trim().toLowerCase();
-        if (!email || form.dataset.dreamCommentEmailChecked === email) return;
-        event.preventDefault();
-        if (form.dataset.dreamCommentEmailChecking === '1') return;
-
-        form.dataset.dreamCommentEmailChecking = '1';
-        form.setAttribute('aria-busy', 'true');
-        var submitter = event.originalEvent
-            ? event.originalEvent.submitter
-            : null;
-        if (submitter) submitter.disabled = true;
-
-        var data = new FormData();
-        data.append('action', 'dream2_check_comment_email');
-        data.append('nonce', Dream2WP.commentIdentityNonce);
-        data.append('email', email);
-        data.append('redirect', window.location.href);
-
-        fetch(Dream2WP.ajaxUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            body: data
-        }).then(function (response) {
-            return response.json();
-        }).then(function (response) {
-            if (
-                response
-                && !response.success
-                && response.data
-                && response.data.code === 'registered_email'
-            ) {
-                form.removeAttribute('aria-busy');
-                delete form.dataset.dreamCommentEmailChecking;
-                if (submitter) submitter.disabled = false;
-                showCommentIdentityNotice(
-                    form,
-                    response.data.message,
-                    response.data.login_url
-                );
-                emailInput.focus();
-                return;
-            }
-
-            form.dataset.dreamCommentEmailChecked = email;
-            submitCheckedCommentForm(form, submitter);
-        }).catch(function () {
-            form.dataset.dreamCommentEmailChecked = email;
-            submitCheckedCommentForm(form, submitter);
-        });
     });
 
     function showLinkApplicationNotice(form, type, message) {
@@ -1089,16 +1054,30 @@
         if (!Dream2WP.enableColorCharacter || target.dataset.dreamSparkReady) return false;
         var queue = [];
         var fetching = 0;
+        var controller = {stopped: false, timer: 0, request: null};
         var state = {text: '', source: '', prefixP: -5, skillP: 0, direction: 'forward', holdUntil: 0, step: 1};
+        controller.stop = function () {
+            if (controller.stopped) return;
+            controller.stopped = true;
+            window.clearTimeout(controller.timer);
+            if (controller.request) controller.request.abort();
+        };
+        target._dreamSparkController = controller;
         function prefetch() {
+            if (controller.stopped || !target.isConnected) return;
             fetching++;
-            Promise.resolve().then(provider).then(function (text) {
+            var request = window.AbortController ? new AbortController() : null;
+            controller.request = request;
+            Promise.resolve().then(function () {
+                return provider(request ? request.signal : undefined);
+            }).then(function (text) {
                 text = String(text || '').trim();
-                if (text) {
+                if (text && !controller.stopped && target.isConnected) {
                     queue.push(text);
                 }
             }).catch(function () {}).then(function () {
                 fetching--;
+                if (controller.request === request) controller.request = null;
             });
         }
         function ensurePrefetch(size) {
@@ -1125,8 +1104,12 @@
             return true;
         }
         function tick() {
+            if (controller.stopped || !target.isConnected) {
+                controller.stop();
+                return;
+            }
             if (!state.source && !useNextSource()) {
-                setTimeout(tick, 75);
+                controller.timer = window.setTimeout(tick, 75);
                 return;
             }
             if (state.step) {
@@ -1161,7 +1144,7 @@
             }
             target.textContent = state.text;
             appendSparkTail(target, state.prefixP < 0 ? Math.min(5, 5 + state.prefixP) : Math.min(5, state.source.length - state.skillP));
-            setTimeout(tick, 75);
+            controller.timer = window.setTimeout(tick, 75);
         }
         target.setAttribute('data-dream-spark-ready', '1');
         prefetchInitial();
@@ -1169,15 +1152,17 @@
         return true;
     }
     function startSparkInput(target, texts) {
-        if (!Dream2WP.enableColorCharacter || !window.sparkInput || target.dataset.dreamSparkReady) return false;
+        if (!Dream2WP.enableColorCharacter || target.dataset.dreamSparkReady) return false;
         texts = (texts || []).map(function (item) {
             return String(item || '').trim();
         }).filter(Boolean);
         if (!texts.length) return false;
-        target.setAttribute('data-dream-spark-ready', '1');
-        target.textContent = '';
-        window.sparkInput(target, texts);
-        return true;
+        var index = 0;
+        return startSparkProvider(target, function () {
+            var text = texts[index % texts.length];
+            index++;
+            return text;
+        });
     }
     function parseHitokotoData(data, fallbackText) {
         if (typeof data === 'string') return data.trim() || fallbackText;
@@ -1195,8 +1180,8 @@
             return source + (source.indexOf('?') === -1 ? '?' : '&') + '_dream2=' + encodeURIComponent(cacheKey);
         }
     }
-    function fetchHitokotoText(fallbackText) {
-        return fetch(buildHitokotoUrl(), {cache: 'no-store'})
+    function fetchHitokotoText(fallbackText, signal) {
+        return fetch(buildHitokotoUrl(), {cache: 'no-store', signal: signal})
             .then(function (response) {
                 if (!response.ok) return Promise.reject();
                 var contentType = response.headers.get('content-type') || '';
@@ -1205,8 +1190,8 @@
             .then(function (data) {
                 return parseHitokotoData(data, fallbackText);
             })
-            .catch(function () {
-                return fallbackText;
+            .catch(function (error) {
+                return error && error.name === 'AbortError' ? '' : fallbackText;
             });
     }
     function initializeHitokoto(root) {
@@ -1216,17 +1201,19 @@
             var fallbackText = target.textContent;
             target.setAttribute('data-dream-hitokoto-ready', '1');
             if (Dream2WP.enableColorCharacter) {
-                startSparkProvider(target, function () { return fetchHitokotoText(fallbackText); });
+                startSparkProvider(target, function (signal) { return fetchHitokotoText(fallbackText, signal); });
                 return;
             }
             target.textContent = '';
-            fetchHitokotoText(fallbackText).then(function (text) {
-                target.textContent = text;
+            var request = window.AbortController ? new AbortController() : null;
+            target._dreamHitokotoController = request;
+            fetchHitokotoText(fallbackText, request ? request.signal : undefined).then(function (text) {
+                if (target.isConnected && text) target.textContent = text;
             });
         });
     }
     function initializeSparkInput(root) {
-        if (isMobileDevice() || !Dream2WP.enableColorCharacter || !window.sparkInput) return;
+        if (isMobileDevice() || !Dream2WP.enableColorCharacter) return;
         if (Dream2WP.enableHitokoto) {
             initializeHitokoto(root);
             return;
@@ -1239,6 +1226,12 @@
     }
     initializeSparkInput(document);
     document.addEventListener('dream2:page-loaded', function () { initializeSparkInput(document); });
+    document.addEventListener('dream2:page-leaving', function () {
+        document.querySelectorAll('.spark-input').forEach(function (target) {
+            if (target._dreamSparkController) target._dreamSparkController.stop();
+            if (target._dreamHitokotoController) target._dreamHitokotoController.abort();
+        });
+    });
 
     var colorizeTags = function (root, selector) {
         var palette = ['#50bfff', '#ff7b89', '#8e7dff', '#35c9a5', '#f1a43c', '#ec6ead'];
@@ -1426,6 +1419,12 @@
 
     initializeCodeBlocks();
     document.addEventListener('dream2:page-loaded', initializeCodeBlocks);
+    document.addEventListener('dream2:page-leaving', function () {
+        if (window.clipboard && typeof window.clipboard.destroy === 'function') {
+            window.clipboard.destroy();
+            delete window.clipboard;
+        }
+    });
 
     $(document).on('click', 'figure > figcaption .ri-arrow-down-s-line', function () {
         var icon = $(this);
@@ -1526,16 +1525,25 @@
         }
     });
 
-    if (Dream2WP.enableKatex && window.katex) {
-        document.querySelectorAll('.article .katex-inline, .article .katex-block').forEach(function (element) {
+    function initializeKatex(root) {
+        if (!window.katex) return;
+        (root || document).querySelectorAll('.article .katex-inline:not([data-dream-katex-ready]), .article .katex-block:not([data-dream-katex-ready])').forEach(function (element) {
+            var formula = element.textContent;
+            element.dataset.dreamKatexReady = '1';
+            if (formula.length > 10000) return;
             try {
-                window.katex.render(element.textContent, element, {
+                window.katex.render(formula, element, {
                     displayMode: element.classList.contains('katex-block'),
-                    throwOnError: false
+                    throwOnError: false,
+                    trust: false,
+                    maxExpand: 1000,
+                    maxSize: 50
                 });
             } catch (ignore) {}
         });
     }
+    initializeKatex(document);
+    document.addEventListener('dream2:page-loaded', function () { initializeKatex(document); });
 
     $(document).on('click', '.dream-copy-link', function () {
         var url = this.dataset.url || location.href;
@@ -1609,13 +1617,18 @@
         };
         var syncPjaxAssets = function (nextDocument) {
             var currentStyles = new Set(Array.from(document.querySelectorAll('link[rel="stylesheet"][href]')).map(function (link) { return link.href; }));
+            var nextStyleUrls = new Set(Array.from(nextDocument.querySelectorAll('link[rel="stylesheet"][href]')).map(function (link) { return link.href; }));
+            var obsoleteStyles = Array.from(document.querySelectorAll('link[data-dream-pjax-managed="1"][rel="stylesheet"][href]')).filter(function (link) {
+                return !nextStyleUrls.has(link.href);
+            });
             var styleLoads = Array.from(nextDocument.querySelectorAll('link[rel="stylesheet"][href]')).filter(function (link) {
                 return !currentStyles.has(link.href);
             }).map(function (link) {
                 return new Promise(function (resolve) {
                     var clone = document.createElement('link');
-                    clone.rel = 'stylesheet';
-                    clone.href = link.href;
+                    Array.from(link.attributes).forEach(function (attribute) {
+                        clone.setAttribute(attribute.name, attribute.value);
+                    });
                     clone.onload = clone.onerror = function () {
                         pjaxProgressInc();
                         resolve();
@@ -1631,6 +1644,10 @@
                 return chain.then(function () {
                     return new Promise(function (resolve) {
                         var clone = document.createElement('script');
+                        Array.from(script.attributes).forEach(function (attribute) {
+                            if (attribute.name !== 'src') clone.setAttribute(attribute.name, attribute.value);
+                        });
+                        clone.async = false;
                         clone.src = script.src;
                         clone.onload = clone.onerror = function () {
                             pjaxProgressInc();
@@ -1640,7 +1657,11 @@
                     });
                 });
             }, Promise.resolve());
-            return Promise.all([Promise.all(styleLoads), scriptLoads]);
+            return Promise.all([Promise.all(styleLoads), scriptLoads]).then(function () {
+                return function () {
+                    obsoleteStyles.forEach(function (link) { link.remove(); });
+                };
+            });
         };
         var syncPjaxShell = function (nextDocument) {
             var currentNav = document.querySelector('.navbar-nav');
@@ -1682,8 +1703,10 @@
                         window.location.href = url;
                         return;
                     }
-                    return syncPjaxAssets(nextDocument).then(function () {
+                    return syncPjaxAssets(nextDocument).then(function (cleanupStyles) {
+                        document.dispatchEvent(new CustomEvent('dream2:page-leaving'));
                         currentSection.replaceWith(nextSection);
+                        cleanupStyles();
                         document.title = nextDocument.title;
                         document.body.className = nextDocument.body.className;
                         syncPjaxShell(nextDocument);
@@ -1733,15 +1756,32 @@
         });
     }
 
-    if (window.Swiper && document.querySelector('.dream-carousel')) {
-        new window.Swiper('.dream-carousel', {
-            loop: true,
-            speed: 650,
-            autoplay: { delay: 5000, disableOnInteraction: false },
-            pagination: { el: '.swiper-pagination', clickable: true },
-            navigation: { nextEl: '.swiper-button-next', prevEl: '.swiper-button-prev' }
+    function initializeCarousels(root) {
+        if (!window.Swiper) return;
+        (root || document).querySelectorAll('.dream-carousel:not([data-dream-swiper-ready])').forEach(function (carousel) {
+            carousel.dataset.dreamSwiperReady = '1';
+            carousel._dreamSwiper = new window.Swiper(carousel, {
+                loop: true,
+                speed: 650,
+                autoplay: { delay: 5000, disableOnInteraction: false },
+                pagination: { el: carousel.querySelector('.swiper-pagination'), clickable: true },
+                navigation: {
+                    nextEl: carousel.querySelector('.swiper-button-next'),
+                    prevEl: carousel.querySelector('.swiper-button-prev')
+                }
+            });
         });
     }
+    initializeCarousels(document);
+    document.addEventListener('dream2:page-loaded', function () { initializeCarousels(document); });
+    document.addEventListener('dream2:page-leaving', function () {
+        document.querySelectorAll('.dream-carousel').forEach(function (carousel) {
+            if (carousel._dreamSwiper && typeof carousel._dreamSwiper.destroy === 'function') {
+                carousel._dreamSwiper.destroy(true, true);
+                carousel._dreamSwiper = null;
+            }
+        });
+    });
 
     if (Dream2WP.copyExplain) {
         document.addEventListener('copy', function (event) {
@@ -1768,34 +1808,55 @@
         });
     }
 
-    var websiteDate = document.getElementById('websiteDate');
-    if (websiteDate && websiteDate.dataset.start) {
-        var start = new Date(websiteDate.dataset.start.replace(/-/g, '/'));
-        var renderDuration = function () {
-            var seconds = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
-            var days = Math.floor(seconds / 86400);
-            var hours = Math.floor(seconds % 86400 / 3600);
-            var minutes = Math.floor(seconds % 3600 / 60);
-            var remain = seconds % 60;
-            websiteDate.innerHTML = '建站<span class="stand">' + days + '</span>天<span class="stand">' +
-                hours + '</span>时<span class="stand">' + minutes + '</span>分<span class="stand">' +
-                remain + '</span>秒';
-        };
-        renderDuration();
-        window.setInterval(renderDuration, 1000);
+    function startElementTimer(element, render) {
+        if (element.dataset.dreamTimerReady === '1') return;
+        element.dataset.dreamTimerReady = '1';
+        render();
+        element._dreamTimer = window.setInterval(function () {
+            if (!element.isConnected) {
+                window.clearInterval(element._dreamTimer);
+                return;
+            }
+            render();
+        }, 1000);
     }
-
-    document.querySelectorAll('.dream-love-time[data-time]').forEach(function (element) {
-        var start = new Date(element.dataset.time.replace(/-/g, '/'));
-        if (isNaN(start.getTime())) return;
-        var renderLoveTime = function () {
-            var seconds = Math.max(0, Math.floor((Date.now() - start.getTime()) / 1000));
-            var days = Math.floor(seconds / 86400);
-            var hours = Math.floor(seconds % 86400 / 3600);
-            var minutes = Math.floor(seconds % 3600 / 60);
-            element.textContent = days + ' 天 ' + hours + ' 时 ' + minutes + ' 分 ' + seconds % 60 + ' 秒';
-        };
-        renderLoveTime();
-        window.setInterval(renderLoveTime, 1000);
+    function initializeTimeCounters(root) {
+        var scope = root || document;
+        var websiteDate = scope.querySelector('#websiteDate[data-start]');
+        if (websiteDate) {
+            var websiteStart = new Date(websiteDate.dataset.start.replace(/-/g, '/'));
+            if (!isNaN(websiteStart.getTime())) {
+                startElementTimer(websiteDate, function () {
+                    var seconds = Math.max(0, Math.floor((Date.now() - websiteStart.getTime()) / 1000));
+                    var days = Math.floor(seconds / 86400);
+                    var hours = Math.floor(seconds % 86400 / 3600);
+                    var minutes = Math.floor(seconds % 3600 / 60);
+                    var remain = seconds % 60;
+                    websiteDate.innerHTML = '建站<span class="stand">' + days + '</span>天<span class="stand">' +
+                        hours + '</span>时<span class="stand">' + minutes + '</span>分<span class="stand">' +
+                        remain + '</span>秒';
+                });
+            }
+        }
+        scope.querySelectorAll('.dream-love-time[data-time]').forEach(function (element) {
+            var loveStart = new Date(element.dataset.time.replace(/-/g, '/'));
+            if (isNaN(loveStart.getTime())) return;
+            startElementTimer(element, function () {
+                var seconds = Math.max(0, Math.floor((Date.now() - loveStart.getTime()) / 1000));
+                var days = Math.floor(seconds / 86400);
+                var hours = Math.floor(seconds % 86400 / 3600);
+                var minutes = Math.floor(seconds % 3600 / 60);
+                element.textContent = days + ' 天 ' + hours + ' 时 ' + minutes + ' 分 ' + seconds % 60 + ' 秒';
+            });
+        });
+    }
+    initializeTimeCounters(document);
+    document.addEventListener('dream2:page-loaded', function () { initializeTimeCounters(document); });
+    document.addEventListener('dream2:page-leaving', function () {
+        var section = document.querySelector('.section');
+        if (!section) return;
+        section.querySelectorAll('[data-dream-timer-ready="1"]').forEach(function (element) {
+            window.clearInterval(element._dreamTimer);
+        });
     });
 })(jQuery);

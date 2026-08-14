@@ -10,8 +10,8 @@ while (have_posts()) :
     the_post();
     dream2_mxin_set_post_views(get_the_ID());
     get_template_part('template-parts/content', 'single');
-    $previous = get_previous_post();
-    $next = get_next_post();
+    $previous = get_next_post();
+    $next = get_previous_post();
     if ($previous || $next) :
         ?>
         <div class="card"><div class="level post-navigation card-content">

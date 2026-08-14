@@ -1,26 +1,17 @@
 /*
-Theme Name: Dream2 MXIN
+Theme Name: Dream 2.0 MXIN
 Theme URI: https://github.com/mxisc/Dream2.0-MXIN
 Author: Nineya; WordPress port by MXIN
 Author URI: https://github.com/nineya
 Description: Dream 2.0 的 WordPress 移植版，保留梦之城二次元视觉并适配 WordPress 原生内容、菜单、评论与小工具。
-Version: 0.8.0
+Version: 0.7.44
 Requires at least: 6.4
 Tested up to: 7.0
 Requires PHP: 8.0
-License: GNU General Public License v2 or later
-License URI: https://www.gnu.org/licenses/gpl-2.0.html
+License: MIT
+License URI: https://opensource.org/licenses/MIT
 Text Domain: dream2-mxin
 Tags: blog, two-columns, three-columns, custom-background, custom-logo, custom-menu, featured-images, threaded-comments
 */
-
-.sticky,
-.bypostauthor,
-.gallery-caption { display: block; }
-.alignleft { float: left; margin-right: 1.5em; }
-.alignright { float: right; margin-left: 1.5em; }
-.aligncenter { clear: both; display: block; margin-left: auto; margin-right: auto; }
-.wp-caption { max-width: 100%; }
-.wp-caption-text { text-align: center; }
 
 /* 主体样式由 assets/css 中的 Dream 2.0 原版样式提供。 */

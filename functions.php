@@ -11,11 +11,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DREAM2_MXIN_VERSION', '0.8.0');
+define('DREAM2_MXIN_VERSION', '0.7.44');
 
-function dream2_mxin_plus_available() {
-    return function_exists('dream2_mxin_plus_is_active');
-}
+// Keep the public layout identical for signed-in and signed-out visitors.
+add_filter('show_admin_bar', '__return_false');
 
 // The links-page setting controls new submissions, not visibility of existing comments.
 add_filter('comments_open', function ($open, $post_id) {
@@ -25,12 +24,14 @@ add_filter('comments_open', function ($open, $post_id) {
     return $open;
 }, 10, 2);
 
+require_once get_template_directory() . '/inc/mail-log.php';
 require_once get_template_directory() . '/inc/theme-settings.php';
-require_once get_template_directory() . '/inc/private-comments-safety.php';
-require_once get_template_directory() . '/inc/link-presentation.php';
+require_once get_template_directory() . '/inc/login.php';
 require_once get_template_directory() . '/inc/sidebar-widgets.php';
+require_once get_template_directory() . '/inc/comment-emojis.php';
+require_once get_template_directory() . '/inc/private-comments.php';
+require_once get_template_directory() . '/inc/link-application.php';
 require_once get_template_directory() . '/inc/template-tags.php';
-require_once get_template_directory() . '/inc/customizer.php';
 
 function dream2_mxin_setup() {
     load_theme_textdomain('dream2-mxin', get_template_directory() . '/languages');
@@ -55,8 +56,6 @@ function dream2_mxin_setup() {
     add_theme_support('align-wide');
     add_theme_support('responsive-embeds');
     add_theme_support('editor-styles');
-    add_theme_support('wp-block-styles');
-    add_editor_style('assets/css/post.min.css');
 
     register_nav_menus(array(
         'primary' => __('主导航', 'dream2-mxin'),
@@ -64,6 +63,9 @@ function dream2_mxin_setup() {
     ));
 }
 add_action('after_setup_theme', 'dream2_mxin_setup');
+
+// Dream2 sidebars use WP_Widget modules; the block widget editor only adds costly REST previews here.
+add_filter('use_widgets_block_editor', '__return_false');
 
 function dream2_mxin_builtin_route_slug($key, $fallback) {
     $slug = sanitize_title(dream2_get($key, $fallback));
@@ -244,6 +246,44 @@ function dream2_mxin_asset_version($path) {
     return file_exists($file) ? (string) filemtime($file) : DREAM2_MXIN_VERSION;
 }
 
+function dream2_mxin_current_singular_content() {
+    if (!is_singular()) {
+        return '';
+    }
+    $post_id = get_queried_object_id();
+    return $post_id ? (string) get_post_field('post_content', $post_id) : '';
+}
+
+function dream2_mxin_singular_has_code() {
+    $content = dream2_mxin_current_singular_content();
+    return $content !== '' && (
+        has_block('core/code', $content)
+        || (bool) preg_match('/<(?:pre|code)\b/i', $content)
+    );
+}
+
+function dream2_mxin_singular_has_katex() {
+    $content = dream2_mxin_current_singular_content();
+    return $content !== '' && (bool) preg_match('/\bkatex-(?:inline|block)\b/i', $content);
+}
+
+function dream2_mxin_mark_pjax_managed_style($html, $handle) {
+    $managed = array(
+        'dream2-post',
+        'dream2-qmsg',
+        'dream2-highlight',
+        'dream2-katex',
+        'dream2-share',
+        'dream2-fancybox',
+        'dream2-aplayer',
+    );
+    if (in_array($handle, $managed, true)) {
+        $html = str_replace('<link ', '<link data-dream-pjax-managed="1" ', $html);
+    }
+    return $html;
+}
+add_filter('style_loader_tag', 'dream2_mxin_mark_pjax_managed_style', 10, 2);
+
 function dream2_mxin_font_config() {
     $presets = array(
         'system' => array(
@@ -259,9 +299,6 @@ function dream2_mxin_font_config() {
             'family' => 'Noto Sans SC, Microsoft YaHei, sans-serif',
         ),
     );
-    if (!dream2_mxin_plus_available()) {
-        return $presets['system'];
-    }
     $options = get_option('dream2_options', array());
     $options = is_array($options) ? $options : array();
     if (array_key_exists('font_preset', $options)) {
@@ -279,6 +316,10 @@ function dream2_mxin_font_config() {
 }
 
 function dream2_mxin_enqueue_assets() {
+    $lightweight_widget_context = dream2_mxin_is_widget_rest_preview_request();
+    $singular_has_code = is_singular() && dream2_mxin_singular_has_code();
+    $singular_has_katex = is_singular() && dream2_enabled('enable_katex') && dream2_mxin_singular_has_katex();
+    $home_has_carousel = is_home() && (bool) dream2_mxin_parse_repeater(dream2_get('carousel_options', ''));
     $style_dependencies = array('dream2-theme');
     $font = dream2_mxin_font_config();
     if ($font['url']) {
@@ -302,19 +343,21 @@ function dream2_mxin_enqueue_assets() {
 
     if (is_singular()) {
         wp_enqueue_style('dream2-post', dream2_mxin_asset('css/post.min.css'), array('dream2-style'), DREAM2_MXIN_VERSION);
-        wp_enqueue_style('dream2-qmsg', dream2_mxin_asset('lib/qmsg/qmsg.min.css'), array(), DREAM2_MXIN_VERSION);
-        $highlight_theme = sanitize_file_name(dream2_get('code_pretty', 'atom-one-light'));
-        $highlight_path = get_template_directory() . '/assets/lib/highlightjs@11.5.1/styles/' . $highlight_theme . '.min.css';
-        if (!file_exists($highlight_path)) {
-            $highlight_theme = 'atom-one-light';
+        if ($singular_has_code) {
+            wp_enqueue_style('dream2-qmsg', dream2_mxin_asset('lib/qmsg/qmsg.min.css'), array(), DREAM2_MXIN_VERSION);
+            $highlight_theme = sanitize_file_name(dream2_get('code_pretty', 'atom-one-light'));
+            $highlight_path = get_template_directory() . '/assets/lib/highlightjs@11.5.1/styles/' . $highlight_theme . '.min.css';
+            if (!file_exists($highlight_path)) {
+                $highlight_theme = 'atom-one-light';
+            }
+            wp_enqueue_style('dream2-highlight', dream2_mxin_asset('lib/highlightjs@11.5.1/styles/' . $highlight_theme . '.min.css'), array(), '11.5.1');
+            wp_enqueue_script('dream2-qmsg', dream2_mxin_asset('lib/qmsg/qmsg.min.js'), array(), DREAM2_MXIN_VERSION, true);
+            wp_enqueue_script('dream2-clipboard', dream2_mxin_asset('lib/clipboard@2.0.10/clipboard.min.js'), array(), '2.0.10', true);
+            wp_enqueue_script('dream2-highlight', dream2_mxin_asset('lib/highlightjs@11.5.1/highlight.min.js'), array(), '11.5.1', true);
         }
-        wp_enqueue_style('dream2-highlight', dream2_mxin_asset('lib/highlightjs@11.5.1/styles/' . $highlight_theme . '.min.css'), array(), '11.5.1');
-        wp_enqueue_script('dream2-qmsg', dream2_mxin_asset('lib/qmsg/qmsg.min.js'), array(), DREAM2_MXIN_VERSION, true);
-        wp_enqueue_script('dream2-clipboard', dream2_mxin_asset('lib/clipboard@2.0.10/clipboard.min.js'), array(), '2.0.10', true);
-        wp_enqueue_script('dream2-highlight', dream2_mxin_asset('lib/highlightjs@11.5.1/highlight.min.js'), array(), '11.5.1', true);
-        if (dream2_enabled('enable_katex')) {
-            wp_enqueue_style('dream2-katex', dream2_mxin_asset('lib/katex@0.12.0/katex.min.css'), array(), '0.12.0');
-            wp_enqueue_script('dream2-katex', dream2_mxin_asset('lib/katex@0.12.0/katex.min.js'), array(), '0.12.0', true);
+        if ($singular_has_katex) {
+            wp_enqueue_style('dream2-katex', dream2_mxin_asset('lib/katex@0.18.1/katex.min.css'), array(), '0.18.1');
+            wp_enqueue_script('dream2-katex', dream2_mxin_asset('lib/katex@0.18.1/katex.min.js'), array(), '0.18.1', true);
         }
         if (dream2_enabled('enable_post_share')) {
             wp_enqueue_style('dream2-share', dream2_mxin_asset('css/dshare.min.css'), array(), DREAM2_MXIN_VERSION);
@@ -322,10 +365,12 @@ function dream2_mxin_enqueue_assets() {
     }
 
     wp_enqueue_script('jquery');
-    wp_enqueue_script('dream2-swiper', dream2_mxin_asset('lib/swiper@8.4.6/swiper-bundle.min.js'), array(), '8.4.6', true);
-    $port_dependencies = array('jquery', 'dream2-swiper');
-    $plus_enabled = dream2_mxin_plus_available();
-    $color_character_enabled = $plus_enabled && dream2_enabled('enable_color_character');
+    $port_dependencies = array('jquery');
+    if ($home_has_carousel) {
+        wp_enqueue_script('dream2-swiper', dream2_mxin_asset('lib/swiper@8.4.6/swiper-bundle.min.js'), array(), '8.4.6', true);
+        $port_dependencies[] = 'dream2-swiper';
+    }
+    $color_character_enabled = !$lightweight_widget_context && dream2_enabled('enable_color_character');
     $hitokoto_mode = dream2_get('enable_hitokoto', '0');
     $hitokoto_enabled = $color_character_enabled && $hitokoto_mode !== '0';
     $hitokoto_category = sanitize_key(dream2_get('hitokoto_category', 'all'));
@@ -335,13 +380,11 @@ function dream2_mxin_enqueue_assets() {
     } elseif ($hitokoto_mode === 'official' && preg_match('/^[a-l]$/', $hitokoto_category)) {
         $hitokoto_url = add_query_arg(array('encode' => 'json', 'c' => $hitokoto_category), 'https://v1.hitokoto.cn/');
     }
-    if ($color_character_enabled) {
-        wp_enqueue_script('dream2-spark-input', dream2_mxin_asset('js/spark-input.min.js'), array(), dream2_mxin_asset_version('js/spark-input.min.js'), true);
-        $port_dependencies[] = 'dream2-spark-input';
+    if ($singular_has_code) {
+        $port_dependencies = array_merge($port_dependencies, array('dream2-qmsg', 'dream2-clipboard', 'dream2-highlight'));
     }
-    if (is_singular()) {
-        $port_dependencies[] = 'dream2-qmsg';
-        $port_dependencies[] = 'dream2-clipboard';
+    if ($singular_has_katex) {
+        $port_dependencies[] = 'dream2-katex';
     }
     wp_enqueue_script('dream2-port', get_template_directory_uri() . '/assets/js/wordpress-port.js', $port_dependencies, dream2_mxin_asset_version('js/wordpress-port.js'), true);
 
@@ -370,16 +413,16 @@ function dream2_mxin_enqueue_assets() {
     if (dream2_get('load_progress', 'none') !== 'none') {
         wp_enqueue_script('dream2-progress', dream2_mxin_asset('js/dprogress.min.js'), array('dream2-port'), dream2_mxin_asset_version('js/dprogress.min.js'), true);
     }
-    if ($plus_enabled && dream2_enabled('enable_busuanzi')) {
+    if (!$lightweight_widget_context && dream2_enabled('enable_busuanzi')) {
         wp_enqueue_script('dream2-busuanzi', 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js', array(), null, true);
     }
-    if ($plus_enabled && dream2_get('music_mode', 'none') !== 'none') {
+    if (!$lightweight_widget_context && dream2_get('music_mode', 'none') !== 'none') {
         wp_enqueue_style('dream2-aplayer', dream2_mxin_asset('lib/aplayer@1.10.1/APlayer.min.css'), array(), '1.10.1');
         wp_enqueue_script('dream2-aplayer', dream2_mxin_asset('lib/aplayer@1.10.1/APlayer.min.js'), array(), '1.10.1', true);
         wp_enqueue_script('dream2-meting', dream2_mxin_asset('lib/meting@2.0.1/Meting.min.js'), array('dream2-aplayer'), '2.0.1', true);
     }
 
-    foreach ($plus_enabled ? preg_split('/\R+/', (string) dream2_get('external_css', '')) : array() as $index => $url) {
+    foreach (preg_split('/\R+/', (string) dream2_get('external_css', '')) as $index => $url) {
         $url = esc_url_raw(trim($url));
         if ($url) {
             wp_enqueue_style('dream2-external-' . $index, $url, array(), null);
@@ -391,12 +434,11 @@ function dream2_mxin_enqueue_assets() {
 
     wp_localize_script('dream2-port', 'Dream2WP', array(
         'themeBase'     => trailingslashit(get_template_directory_uri()),
-        'emojiBase'     => function_exists('dream2_mxin_emoji_base_url') ? trailingslashit(dream2_mxin_emoji_base_url()) : '',
-        'emojiGroups'   => function_exists('dream2_mxin_comment_emoji_groups') ? dream2_mxin_comment_emoji_groups() : array(),
+        'emojiEndpoint' => add_query_arg('action', 'dream2_mxin_comment_emojis', admin_url('admin-ajax.php')),
         'themeVersion'  => DREAM2_MXIN_VERSION,
         'defaultTheme'  => dream2_get('default_theme', 'system'),
-        'hiddenTitle'   => dream2_get('document_hidden_title', __('你别走呀 (´；ω；`)', 'dream2-mxin')),
-        'visibleTitle'  => dream2_get('document_visible_title', __('欢迎回来 (｡･ω･｡)', 'dream2-mxin')),
+        'hiddenTitle'   => dream2_get('document_hidden_title', '你别走呀 (´；ω；`)'),
+        'visibleTitle'  => dream2_get('document_visible_title', '欢迎回来 (｡･ω･｡)'),
         'websiteTime'   => dream2_get('website_time', ''),
         'copyExplain'   => dream2_get('copy_explain', ''),
         'cursorMove'    => dream2_get('cursor_move', 'none'),
@@ -412,9 +454,9 @@ function dream2_mxin_enqueue_assets() {
         'codeFoldLine'  => absint(dream2_get('code_fold_line', 0)),
         'imageFoldHeight' => absint(dream2_get('img_fold_height', 0)),
         'showImageName' => dream2_enabled('show_img_name'),
-        'enableKatex'   => dream2_enabled('enable_katex'),
+        'enableKatex'   => $singular_has_katex,
         'enableShare'   => dream2_enabled('enable_post_share'),
-        'metingApi'     => $plus_enabled ? dream2_get('meting_api', '') : '',
+        'metingApi'     => dream2_get('meting_api', ''),
         'enablePjax'    => dream2_enabled('enable_pjax'),
         'enableServiceWorker' => dream2_enabled('enable_sw'),
         'serviceWorkerUrl' => add_query_arg('dream2_sw', '1', home_url('/')),
@@ -424,12 +466,11 @@ function dream2_mxin_enqueue_assets() {
         'colorCharacters' => $color_character_enabled && !$hitokoto_enabled ? preg_split('/\R+/', (string) dream2_get('color_character', '')) : array(),
         'colorTags'      => dream2_enabled('enable_tag_color'),
         'colorTagCloud'  => dream2_enabled('enable_tagcloud_color'),
-        'enableBaiduPush'   => $plus_enabled && dream2_enabled('enable_baidu_push'),
-        'enableToutiaoPush' => $plus_enabled && dream2_enabled('enable_toutiao_push'),
-        'commentIdentityNonce' => wp_create_nonce('dream2_comment_identity'),
+        'enableBaiduPush'   => !$lightweight_widget_context && dream2_enabled('enable_baidu_push'),
+        'enableToutiaoPush' => !$lightweight_widget_context && dream2_enabled('enable_toutiao_push'),
         'ajaxUrl'            => admin_url('admin-ajax.php'),
         'searchRestUrl'      => rest_url('wp/v2/search'),
-        'defaultAvatar'      => dream2_get('links_default_avatar', dream2_mxin_asset('img/avatar.svg')) ?: dream2_mxin_asset('img/avatar.svg'),
+        'defaultAvatar'      => dream2_mxin_default_avatar_url(),
         'searchUrl'     => home_url('/'),
         'backToTopText' => __('返回顶部', 'dream2-mxin'),
     ));
@@ -496,9 +537,6 @@ function dream2_mxin_inline_theme_css() {
 add_action('wp_head', 'dream2_mxin_inline_theme_css', 30);
 
 function dream2_mxin_print_script_group($external_key, $inline_key) {
-    if (!dream2_mxin_plus_available()) {
-        return;
-    }
     foreach (preg_split('/\R+/', (string) dream2_get($external_key, '')) as $url) {
         $url = esc_url(trim($url));
         if ($url) {
@@ -599,7 +637,7 @@ function dream2_mxin_render_post_meta_box($post) {
     <p>
         <label for="dream2_thumbnail_mode"><?php esc_html_e('封面显示模式', 'dream2-mxin'); ?></label>
         <select class="widefat" id="dream2_thumbnail_mode" name="dream2_thumbnail_mode">
-            <?php foreach (array('' => __('跟随主题', 'dream2-mxin'), 'default' => __('大图卡片', 'dream2-mxin'), 'small' => __('小图卡片', 'dream2-mxin'), 'back' => __('背景封面', 'dream2-mxin'), 'fold' => __('折叠封面', 'dream2-mxin'), 'none' => __('不显示封面', 'dream2-mxin')) as $value => $label) : ?>
+            <?php foreach (array('' => '跟随主题', 'default' => '大图卡片', 'small' => '小图卡片', 'back' => '背景封面', 'fold' => '折叠封面', 'none' => '不显示封面') as $value => $label) : ?>
                 <option value="<?php echo esc_attr($value); ?>" <?php selected($thumbnail_mode, $value); ?>><?php echo esc_html($label); ?></option>
             <?php endforeach; ?>
         </select>

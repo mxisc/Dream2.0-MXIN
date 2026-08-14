@@ -9,6 +9,42 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+function dream2_mxin_is_widget_rest_preview_request() {
+    if (!defined('REST_REQUEST') || !REST_REQUEST) {
+        return false;
+    }
+
+    $route = (string) get_query_var('rest_route');
+    if ($route === '' && isset($_SERVER['REQUEST_URI'])) {
+        $path = (string) wp_parse_url(wp_unslash($_SERVER['REQUEST_URI']), PHP_URL_PATH);
+        $prefix = '/' . trim(rest_get_url_prefix(), '/') . '/';
+        $position = strpos($path, $prefix);
+        if ($position !== false) {
+            $route = '/' . ltrim(substr($path, $position + strlen($prefix)), '/');
+        }
+    }
+
+    return (bool) preg_match('#^/wp/v2/widget-types/[^/]+/render/?$#', $route);
+}
+
+function dream2_mxin_is_widget_editor_request() {
+    global $pagenow;
+
+    return is_admin() && $pagenow === 'widgets.php';
+}
+
+function dream2_mxin_render_sidebar_widget_preview_placeholder($type, $module, $widget_id = '') {
+    $defaults = dream2_mxin_sidebar_widget_defaults($type);
+    dream2_mxin_sidebar_widget_section_open($type, $module, $widget_id);
+    dream2_mxin_sidebar_widget_title_html($module, $defaults['title'], $defaults['icon']);
+    ?>
+    <div class="card-content">
+        <p><?php esc_html_e('Dream2 模块预览已简化，前台会按实际配置渲染。', 'dream2-mxin'); ?></p>
+    </div>
+    </section>
+    <?php
+}
+
 function dream2_mxin_sidebar_stat_label($type) {
     $labels = array(
         'post'     => '文章',
@@ -17,7 +53,7 @@ function dream2_mxin_sidebar_stat_label($type) {
         'comment'  => '评论',
         'visit'    => '访问',
     );
-    return translate($labels[$type] ?? $labels['post'], 'dream2-mxin');
+    return $labels[$type] ?? $labels['post'];
 }
 
 function dream2_mxin_sidebar_stat_value($type) {
@@ -62,7 +98,7 @@ function dream2_mxin_sidebar_widget_defaults($type) {
         'ad_piece'        => array('title' => '', 'icon' => '', 'class' => 'dream-ad'),
         'custom'          => array('title' => '自定义模块', 'icon' => 'ri-apps-2-line', 'class' => ''),
     );
-    return dream2_mxin_translate_display_values($defaults[$type] ?? array('title' => '', 'icon' => '', 'class' => ''));
+    return $defaults[$type] ?? array('title' => '', 'icon' => '', 'class' => '');
 }
 
 function dream2_mxin_sidebar_widget_title($module, $fallback) {
@@ -131,14 +167,18 @@ function dream2_mxin_render_sidebar_widget_module($type, $module = array(), $wid
     if ($type === 'ad_piece' && dream2_get('ad_mode', 'none') === 'none') {
         return;
     }
+    if (dream2_mxin_is_widget_rest_preview_request()) {
+        dream2_mxin_render_sidebar_widget_preview_placeholder($type, $module, $widget_id);
+        return;
+    }
 
     dream2_mxin_sidebar_widget_section_open($type, $module, $widget_id);
 
     if ($type === 'profile') : ?>
         <div class="card-content">
             <nav class="level"><div class="level-item" style="flex-direction:column">
-                <figure class="image"><?php echo get_avatar(get_option('admin_email'), 86, '', '', array('class' => 'avatar')); ?></figure>
-                <p class="nickname"><?php echo esc_html(dream2_get('metadata_name', get_bloginfo('name')) ?: get_bloginfo('name')); ?></p>
+                <figure class="image"><?php echo get_avatar(dream2_mxin_profile_avatar_target(), 86, '', '', array('class' => 'avatar')); ?></figure>
+                <p class="nickname"><?php echo esc_html(dream2_mxin_profile_display_name()); ?></p>
                 <p class="motto spark-input"><?php bloginfo('description'); ?></p>
                 <?php if (dream2_get('profile_location')) : ?><p class="address"><i class="ri-map-pin-line"></i> <?php echo esc_html(dream2_get('profile_location')); ?></p><?php endif; ?>
             </div></nav>
@@ -161,13 +201,13 @@ function dream2_mxin_render_sidebar_widget_module($type, $module = array(), $wid
         <div class="card-content toc-content"></div>
     <?php elseif ($type === 'notice') : ?>
         <?php dream2_mxin_sidebar_widget_title_html($module, $defaults['title'], $defaults['icon']); ?>
-        <div class="card-content"><?php echo wp_kses_post(dream2_get('notice_content', '<p>' . esc_html__('欢迎来访本站，博主还没有发布任何公告！', 'dream2-mxin') . '</p>')); ?></div>
+        <div class="card-content"><?php echo wp_kses_post(dream2_get('notice_content', '<p>欢迎来访本站，博主还没有发布任何公告！</p>')); ?></div>
     <?php elseif ($type === 'love') : ?>
         <?php dream2_mxin_sidebar_widget_title_html($module, $defaults['title'], $defaults['icon']); ?>
         <div class="card-content dream-love-avatars">
-            <a href="<?php echo esc_url(dream2_get('love_oneself_url', '#')); ?>"><img src="<?php echo esc_url(dream2_get('love_oneself_avatar')); ?>" alt="<?php esc_attr_e('自己的头像', 'dream2-mxin'); ?>"></a>
+            <a href="<?php echo esc_url(dream2_get('love_oneself_url', '#')); ?>"><img src="<?php echo esc_url(dream2_get('love_oneself_avatar')); ?>" alt="自己的头像"></a>
             <i class="ri-heart-fill"></i>
-            <a href="<?php echo esc_url(dream2_get('love_opposite_url', '#')); ?>"><img src="<?php echo esc_url(dream2_get('love_opposite_avatar')); ?>" alt="<?php esc_attr_e('对方的头像', 'dream2-mxin'); ?>"></a>
+            <a href="<?php echo esc_url(dream2_get('love_opposite_url', '#')); ?>"><img src="<?php echo esc_url(dream2_get('love_opposite_avatar')); ?>" alt="对方的头像"></a>
         </div>
         <?php if (dream2_get('love_time')) : ?><p class="dream-love-time" data-time="<?php echo esc_attr(dream2_get('love_time')); ?>"><?php echo esc_html(dream2_get('love_time')); ?></p><?php endif; ?>
     <?php elseif ($type === 'music') : ?>
@@ -207,9 +247,9 @@ function dream2_mxin_render_sidebar_widget_module($type, $module = array(), $wid
         <?php dream2_mxin_sidebar_widget_title_html($module, $defaults['title'], $defaults['icon']); ?>
         <div class="card-content"><?php wp_tag_cloud(array('smallest' => 14, 'largest' => 30, 'unit' => 'px', 'number' => (int) dream2_get('tagcloud_num', 32), 'format' => 'flat')); ?></div>
     <?php elseif ($type === 'ad_piece') : ?>
-        <?php if (dream2_enabled('show_ad_tag')) : ?><span class="dream-ad-tag"><?php esc_html_e('广告', 'dream2-mxin'); ?></span><?php endif; ?>
-        <?php if (dream2_enabled('ad_tag_close')) : ?><button class="dream-ad-close" type="button" aria-label="<?php esc_attr_e('关闭广告', 'dream2-mxin'); ?>"><i class="ri-close-line"></i></button><?php endif; ?>
-        <?php if (dream2_get('ad_mode') === 'image') : ?><a href="<?php echo esc_url(dream2_get('ad_target_url', '#')); ?>"><img src="<?php echo esc_url(dream2_get('ad_image')); ?>" alt="<?php esc_attr_e('广告', 'dream2-mxin'); ?>"></a><?php else : echo dream2_get('ad_custom_code'); endif; // phpcs:ignore ?>
+        <?php if (dream2_enabled('show_ad_tag')) : ?><span class="dream-ad-tag">广告</span><?php endif; ?>
+        <?php if (dream2_enabled('ad_tag_close')) : ?><button class="dream-ad-close" type="button" aria-label="关闭广告"><i class="ri-close-line"></i></button><?php endif; ?>
+        <?php if (dream2_get('ad_mode') === 'image') : ?><a href="<?php echo esc_url(dream2_get('ad_target_url', '#')); ?>"><img src="<?php echo esc_url(dream2_get('ad_image')); ?>" alt="广告"></a><?php else : echo dream2_get('ad_custom_code'); endif; // phpcs:ignore ?>
     <?php elseif ($type === 'custom') : ?>
         <?php dream2_mxin_sidebar_widget_title_html($module, $defaults['title'], $defaults['icon']); ?>
         <?php echo wp_kses_post($module['content'] ?? ''); ?>
@@ -229,7 +269,7 @@ abstract class Dream2_MXIN_Sidebar_Widget extends WP_Widget {
         $this->default_icon = $default_icon;
         parent::__construct($id_base, $name, array(
             'classname'                   => 'dream2-widget-' . sanitize_html_class($type),
-            'description'                 => __('Dream2 侧栏小工具', 'dream2-mxin'),
+            'description'                 => 'Dream2 侧栏小工具',
             'customize_selective_refresh' => true,
         ));
     }
@@ -265,15 +305,15 @@ abstract class Dream2_MXIN_Sidebar_Widget extends WP_Widget {
         $hide = $instance['hide'] ?? 'is-not-hidden';
         ?>
         <p>
-            <label for="<?php echo esc_attr($this->get_field_id('title')); ?>"><?php esc_html_e('标题', 'dream2-mxin'); ?></label>
+            <label for="<?php echo esc_attr($this->get_field_id('title')); ?>">标题</label>
             <input class="widefat" id="<?php echo esc_attr($this->get_field_id('title')); ?>" name="<?php echo esc_attr($this->get_field_name('title')); ?>" type="text" value="<?php echo esc_attr($title); ?>">
         </p>
         <p>
-            <label for="<?php echo esc_attr($this->get_field_id('icon')); ?>"><?php esc_html_e('图标 Class', 'dream2-mxin'); ?></label>
+            <label for="<?php echo esc_attr($this->get_field_id('icon')); ?>">图标 Class</label>
             <input class="widefat" id="<?php echo esc_attr($this->get_field_id('icon')); ?>" name="<?php echo esc_attr($this->get_field_name('icon')); ?>" type="text" value="<?php echo esc_attr($icon); ?>">
         </p>
         <p>
-            <label for="<?php echo esc_attr($this->get_field_id('hide')); ?>"><?php esc_html_e('隐藏方式', 'dream2-mxin'); ?></label>
+            <label for="<?php echo esc_attr($this->get_field_id('hide')); ?>">隐藏方式</label>
             <select class="widefat" id="<?php echo esc_attr($this->get_field_id('hide')); ?>" name="<?php echo esc_attr($this->get_field_name('hide')); ?>">
                 <?php foreach (dream2_mxin_sidebar_hide_choices() as $value => $label) : ?>
                     <option value="<?php echo esc_attr($value); ?>" <?php selected($hide, $value); ?>><?php echo esc_html($label); ?></option>
@@ -282,25 +322,25 @@ abstract class Dream2_MXIN_Sidebar_Widget extends WP_Widget {
         </p>
         <?php if ($this->module_type === 'custom') : ?>
             <p>
-                <label for="<?php echo esc_attr($this->get_field_id('content')); ?>"><?php esc_html_e('内容', 'dream2-mxin'); ?></label>
+                <label for="<?php echo esc_attr($this->get_field_id('content')); ?>">内容</label>
                 <textarea class="widefat" rows="8" id="<?php echo esc_attr($this->get_field_id('content')); ?>" name="<?php echo esc_attr($this->get_field_name('content')); ?>"><?php echo esc_textarea($instance['content'] ?? ''); ?></textarea>
             </p>
         <?php endif;
     }
 }
 
-class Dream2_MXIN_Profile_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_profile', __('Dream2 信息模块', 'dream2-mxin'), 'profile', '', ''); } }
-class Dream2_MXIN_Toc_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_toc', __('Dream2 目录模块', 'dream2-mxin'), 'toc', __('目录', 'dream2-mxin'), 'ri-book-2-line'); } }
-class Dream2_MXIN_Notice_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_notice', __('Dream2 公告模块', 'dream2-mxin'), 'notice', __('公告', 'dream2-mxin'), 'ri-volume-up-line'); } }
-class Dream2_MXIN_Love_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_love', __('Dream2 恋爱墙模块', 'dream2-mxin'), 'love', __('恋爱墙', 'dream2-mxin'), 'ri-heart-3-line'); } }
-class Dream2_MXIN_Music_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_music', __('Dream2 音乐模块', 'dream2-mxin'), 'music', __('音乐', 'dream2-mxin'), 'ri-music-2-line'); } }
-class Dream2_MXIN_Recent_Posts_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_recent_posts', __('Dream2 最新文章模块', 'dream2-mxin'), 'recent_posts', __('最新文章', 'dream2-mxin'), 'ri-history-line'); } }
-class Dream2_MXIN_Recent_Comments_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_recent_comments', __('Dream2 最新评论模块', 'dream2-mxin'), 'recent_comments', __('最新评论', 'dream2-mxin'), 'ri-chat-3-line'); } }
-class Dream2_MXIN_Categories_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_categories', __('Dream2 文章分类模块', 'dream2-mxin'), 'categories', __('分类', 'dream2-mxin'), 'ri-apps-line'); } }
-class Dream2_MXIN_Tags_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_tags', __('Dream2 文章标签模块', 'dream2-mxin'), 'tags', __('标签', 'dream2-mxin'), 'ri-price-tag-3-line'); } }
-class Dream2_MXIN_Tagcloud_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_tagcloud', __('Dream2 标签云模块', 'dream2-mxin'), 'tagcloud', __('标签云', 'dream2-mxin'), 'ri-cloud-line'); } }
-class Dream2_MXIN_Ad_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_ad', __('Dream2 广告模块', 'dream2-mxin'), 'ad_piece', '', ''); } }
-class Dream2_MXIN_Custom_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_custom', __('Dream2 自定义模块', 'dream2-mxin'), 'custom', __('自定义模块', 'dream2-mxin'), 'ri-apps-2-line'); } }
+class Dream2_MXIN_Profile_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_profile', 'Dream2 信息模块', 'profile', '', ''); } }
+class Dream2_MXIN_Toc_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_toc', 'Dream2 目录模块', 'toc', '目录', 'ri-book-2-line'); } }
+class Dream2_MXIN_Notice_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_notice', 'Dream2 公告模块', 'notice', '公告', 'ri-volume-up-line'); } }
+class Dream2_MXIN_Love_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_love', 'Dream2 恋爱墙模块', 'love', '恋爱墙', 'ri-heart-3-line'); } }
+class Dream2_MXIN_Music_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_music', 'Dream2 音乐模块', 'music', '音乐', 'ri-music-2-line'); } }
+class Dream2_MXIN_Recent_Posts_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_recent_posts', 'Dream2 最新文章模块', 'recent_posts', '最新文章', 'ri-history-line'); } }
+class Dream2_MXIN_Recent_Comments_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_recent_comments', 'Dream2 最新评论模块', 'recent_comments', '最新评论', 'ri-chat-3-line'); } }
+class Dream2_MXIN_Categories_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_categories', 'Dream2 文章分类模块', 'categories', '分类', 'ri-apps-line'); } }
+class Dream2_MXIN_Tags_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_tags', 'Dream2 文章标签模块', 'tags', '标签', 'ri-price-tag-3-line'); } }
+class Dream2_MXIN_Tagcloud_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_tagcloud', 'Dream2 标签云模块', 'tagcloud', '标签云', 'ri-cloud-line'); } }
+class Dream2_MXIN_Ad_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_ad', 'Dream2 广告模块', 'ad_piece', '', ''); } }
+class Dream2_MXIN_Custom_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_custom', 'Dream2 自定义模块', 'custom', '自定义模块', 'ri-apps-2-line'); } }
 
 function dream2_mxin_register_sidebar_widgets() {
     foreach (array(

@@ -21,8 +21,8 @@ if (post_password_required()) {
     $commenter = wp_get_current_commenter();
     $required  = get_option('require_name_email');
     $aria_req  = $required ? ' aria-required="true" required' : '';
-    $private_comment_field = function_exists('dream2_mxin_private_comment_fields') ? dream2_mxin_private_comment_fields() : '';
-    $registered_email_notice = function_exists('dream2_mxin_registered_comment_email_notice') ? dream2_mxin_registered_comment_email_notice() : '';
+    $private_comment_field = dream2_mxin_private_comment_fields();
+    $registered_email_notice = dream2_mxin_registered_comment_email_notice();
     $logged_in_as = '';
     if (is_user_logged_in()) {
         $current_user = wp_get_current_user();

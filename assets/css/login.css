@@ -1,0 +1,411 @@
+:root {
+    --dream2-login-accent: #50bfff;
+    --dream2-login-accent-night: #5d93db;
+    --dream2-login-text: #172033;
+    --dream2-login-muted: #718096;
+    --dream2-login-panel: rgba(255, 255, 255, 0.86);
+    --dream2-login-border: rgba(148, 163, 184, 0.24);
+    --dream2-login-shadow: 0 28px 80px rgba(48, 78, 115, 0.18);
+}
+
+html {
+    background: #eff6ff;
+}
+
+body.login.dream2-login {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 320px;
+    min-height: 100vh;
+    margin: 0;
+    padding: clamp(24px, 4vw, 64px);
+    overflow-x: hidden;
+    color: var(--dream2-login-text);
+    background:
+        radial-gradient(circle at 12% 14%, color-mix(in srgb, var(--dream2-login-accent) 22%, transparent), transparent 28rem),
+        radial-gradient(circle at 88% 86%, rgba(111, 78, 255, 0.13), transparent 26rem),
+        linear-gradient(145deg, #eef8ff 0%, #f8faff 48%, #f6f2ff 100%);
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    box-sizing: border-box;
+}
+
+body.login.dream2-login::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.42;
+    background-image: radial-gradient(rgba(80, 191, 255, 0.24) 0.7px, transparent 0.7px);
+    background-size: 18px 18px;
+    mask-image: linear-gradient(115deg, #000, transparent 72%);
+}
+
+body.login.dream2-login #login {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 430px);
+    margin: 0 auto;
+    padding: clamp(30px, 4vw, 48px);
+    border: 1px solid var(--dream2-login-border);
+    border-radius: 30px;
+    background: var(--dream2-login-panel);
+    box-shadow: var(--dream2-login-shadow);
+    backdrop-filter: blur(24px) saturate(135%);
+    box-sizing: border-box;
+}
+
+body.login.dream2-login #login h1 {
+    margin: 0 0 10px;
+    text-align: left;
+}
+
+body.login.dream2-login #login h1 a {
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    height: auto;
+    margin: 0;
+    color: var(--dream2-login-text);
+    background: none;
+    font-size: 20px;
+    font-weight: 760;
+    line-height: 1.25;
+    text-indent: 0;
+    letter-spacing: -0.025em;
+}
+
+body.login.dream2-login #login h1 a::before {
+    content: "D";
+    display: grid;
+    place-items: center;
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+    margin-right: 12px;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(145deg, var(--dream2-login-accent), #7762e7);
+    box-shadow: 0 10px 24px color-mix(in srgb, var(--dream2-login-accent) 32%, transparent);
+    font-size: 20px;
+    font-weight: 800;
+}
+
+.dream2-login-intro {
+    margin: 0 0 28px;
+    color: var(--dream2-login-muted);
+    font-size: 14px;
+}
+
+body.login.dream2-login form {
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+body.login.dream2-login form > p:not(.submit),
+body.login.dream2-login .user-pass-wrap {
+    margin-bottom: 20px;
+}
+
+body.login.dream2-login label {
+    color: #42526a;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+body.login.dream2-login input[type="text"],
+body.login.dream2-login input[type="email"],
+body.login.dream2-login input[type="password"] {
+    min-height: 50px;
+    margin: 8px 0 0;
+    padding: 10px 14px;
+    border: 1px solid #d8e1ee;
+    border-radius: 14px;
+    color: var(--dream2-login-text);
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: inset 0 1px 2px rgba(32, 53, 83, 0.03);
+    font-size: 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+body.login.dream2-login input[type="text"]:focus,
+body.login.dream2-login input[type="email"]:focus,
+body.login.dream2-login input[type="password"]:focus {
+    border-color: var(--dream2-login-accent);
+    background: #fff;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--dream2-login-accent) 16%, transparent);
+    outline: 0;
+}
+
+body.login.dream2-login .wp-pwd {
+    position: relative;
+}
+
+body.login.dream2-login .wp-pwd input {
+    padding-right: 52px;
+}
+
+body.login.dream2-login .button.wp-hide-pw {
+    top: 8px;
+    right: 6px;
+    width: 40px;
+    min-width: 40px;
+    height: 50px;
+    border: 0;
+    color: #7b8ba3;
+    background: transparent;
+    box-shadow: none;
+}
+
+body.login.dream2-login .forgetmenot {
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+}
+
+body.login.dream2-login input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 0 7px 0 0;
+    border: 1px solid #c7d3e2;
+    border-radius: 6px;
+    box-shadow: none;
+}
+
+body.login.dream2-login input[type="checkbox"]:checked {
+    border-color: var(--dream2-login-accent);
+    background: var(--dream2-login-accent);
+}
+
+body.login.dream2-login input[type="checkbox"]:checked::before {
+    width: 20px;
+    height: 20px;
+    margin: -2px 0 0 -2px;
+    color: #fff;
+}
+
+body.login.dream2-login .submit {
+    margin: 26px 0 0;
+}
+
+body.login.dream2-login .button-primary {
+    width: 100%;
+    min-height: 50px;
+    float: none;
+    border: 0;
+    border-radius: 14px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--dream2-login-accent), #7068e8);
+    box-shadow: 0 14px 28px color-mix(in srgb, var(--dream2-login-accent) 28%, transparent);
+    font-size: 15px;
+    font-weight: 700;
+    text-shadow: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+body.login.dream2-login .button-primary:hover,
+body.login.dream2-login .button-primary:focus {
+    color: #fff;
+    background: linear-gradient(135deg, var(--dream2-login-accent), #7068e8);
+    box-shadow: 0 17px 34px color-mix(in srgb, var(--dream2-login-accent) 35%, transparent);
+    filter: saturate(1.08);
+    transform: translateY(-1px);
+}
+
+body.login.dream2-login #nav,
+body.login.dream2-login #backtoblog {
+    padding: 0;
+    text-align: center;
+}
+
+body.login.dream2-login #nav {
+    margin: 26px 0 0;
+}
+
+body.login.dream2-login #backtoblog {
+    margin: 12px 0 0;
+}
+
+body.login.dream2-login #nav a,
+body.login.dream2-login #backtoblog a,
+body.login.dream2-login .privacy-policy-link {
+    color: #687991;
+    font-weight: 550;
+    transition: color 0.2s ease;
+}
+
+body.login.dream2-login #nav a:hover,
+body.login.dream2-login #backtoblog a:hover,
+body.login.dream2-login .privacy-policy-link:hover {
+    color: var(--dream2-login-accent);
+}
+
+body.login.dream2-login #login_error,
+body.login.dream2-login .message,
+body.login.dream2-login .notice {
+    margin: 0 0 22px;
+    padding: 13px 14px;
+    border: 0;
+    border-radius: 13px;
+    color: #4c5d73;
+    background: rgba(229, 239, 252, 0.88);
+    box-shadow: none;
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+body.login.dream2-login #login_error,
+body.login.dream2-login .notice-error {
+    color: #a43c52;
+    background: rgba(255, 230, 235, 0.88);
+}
+
+body.login.dream2-login .language-switcher {
+    position: fixed;
+    top: 18px;
+    right: 22px;
+    bottom: auto;
+    z-index: 2;
+    margin: 0;
+}
+
+body.login.dream2-login .language-switcher form {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+body.login.dream2-login .language-switcher select,
+body.login.dream2-login .language-switcher .button {
+    min-height: 36px;
+    border-color: var(--dream2-login-border);
+    border-radius: 10px;
+    background: var(--dream2-login-panel);
+    box-shadow: none;
+}
+
+body.login.dream2-login .language-switcher select {
+    width: auto;
+    min-width: 150px;
+    max-width: 190px;
+    padding-right: 30px;
+    color: var(--dream2-login-text);
+}
+
+body.login.dream2-login .language-switcher .button {
+    padding-inline: 12px;
+    color: var(--dream2-login-text);
+}
+
+body.login.dream2-login .language-switcher option {
+    color: #172033;
+    background: #fff;
+}
+
+body.login.dream2-login.interim-login {
+    display: block;
+    min-height: 0;
+    padding: 20px;
+    background: #f7f9fc;
+}
+
+body.login.dream2-login.interim-login #login {
+    width: 100%;
+    max-width: 430px;
+    margin: 0 auto;
+}
+
+@media (max-width: 480px) {
+    body.login.dream2-login {
+        padding: 16px;
+    }
+
+    body.login.dream2-login #login {
+        width: 100%;
+        padding: 32px 24px;
+        border-radius: 24px;
+    }
+
+    body.login.dream2-login .language-switcher {
+        top: auto;
+        right: 14px;
+        bottom: 12px;
+    }
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --dream2-login-text: #edf3ff;
+        --dream2-login-muted: #95a4bc;
+        --dream2-login-panel: rgba(22, 29, 45, 0.88);
+        --dream2-login-border: rgba(148, 163, 184, 0.17);
+        --dream2-login-shadow: 0 30px 90px rgba(0, 0, 0, 0.34);
+    }
+
+    html,
+    body.login.dream2-login {
+        background: #0d1320;
+    }
+
+    body.login.dream2-login {
+        background:
+            radial-gradient(circle at 14% 14%, color-mix(in srgb, var(--dream2-login-accent-night) 24%, transparent), transparent 28rem),
+            radial-gradient(circle at 88% 82%, rgba(115, 85, 227, 0.18), transparent 26rem),
+            linear-gradient(145deg, #0c1422 0%, #111827 52%, #171329 100%);
+    }
+
+    body.login.dream2-login label {
+        color: #c5d0e0;
+    }
+
+    body.login.dream2-login input[type="text"],
+    body.login.dream2-login input[type="email"],
+    body.login.dream2-login input[type="password"] {
+        border-color: #354158;
+        color: #eef4ff;
+        background: rgba(16, 24, 39, 0.78);
+    }
+
+    body.login.dream2-login input[type="text"]:focus,
+    body.login.dream2-login input[type="email"]:focus,
+    body.login.dream2-login input[type="password"]:focus {
+        border-color: var(--dream2-login-accent-night);
+        background: #111a2a;
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--dream2-login-accent-night) 18%, transparent);
+    }
+
+    body.login.dream2-login #login h1 a,
+    body.login.dream2-login #nav a,
+    body.login.dream2-login #backtoblog a,
+    body.login.dream2-login .privacy-policy-link {
+        color: #dce6f5;
+    }
+
+    body.login.dream2-login .button-primary {
+        background: linear-gradient(135deg, var(--dream2-login-accent-night), #7665df);
+    }
+
+    body.login.dream2-login #login_error,
+    body.login.dream2-login .notice-error {
+        color: #ffb8c7;
+        background: rgba(121, 37, 60, 0.42);
+    }
+
+    body.login.dream2-login .message,
+    body.login.dream2-login .notice {
+        color: #bed3ef;
+        background: rgba(39, 65, 98, 0.52);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.login.dream2-login .button-primary {
+        transition: none;
+    }
+}

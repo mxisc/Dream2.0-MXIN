@@ -53,19 +53,19 @@ $updated_days = (int) floor((current_time('timestamp') - get_post_modified_time(
                     </div>
                     <div class="copyright-meta level">
                         <div class="level-item">
-                            <h6><?php esc_html_e('作者', 'dream2-mxin'); ?></h6>
+                            <h6>作者</h6>
                             <p><?php echo esc_html(get_the_author()); ?></p>
                         </div>
                         <div class="level-item">
-                            <h6><?php esc_html_e('发布于', 'dream2-mxin'); ?></h6>
+                            <h6>发布于</h6>
                             <p><?php echo esc_html(get_the_date('Y-m-d')); ?></p>
                         </div>
                         <div class="level-item">
-                            <h6><?php esc_html_e('更新于', 'dream2-mxin'); ?></h6>
+                            <h6>更新于</h6>
                             <p><?php echo esc_html(get_the_modified_date('Y-m-d')); ?></p>
                         </div>
                         <div class="level-item">
-                            <h6><?php esc_html_e('许可协议', 'dream2-mxin'); ?></h6>
+                            <h6>许可协议</h6>
                             <a rel="noopener" target="_blank" title="CC BY 4.0" href="https://creativecommons.org/licenses/by/4.0/deed.zh"><i class="icon ri-creative-commons-line"></i>CC BY 4.0</a>
                         </div>
                     </div>
@@ -75,10 +75,10 @@ $updated_days = (int) floor((current_time('timestamp') - get_post_modified_time(
                 <?php $share_url = rawurlencode(get_permalink()); $share_title = rawurlencode(get_the_title()); ?>
                 <div class="dshare dshare-container" data-title="<?php echo esc_attr(get_the_title()); ?>" data-url="<?php echo esc_url(get_permalink()); ?>" data-image="<?php echo esc_url($thumbnail); ?>">
                     <a class="dshare-icon icon-qq" target="_blank" rel="noopener" href="<?php echo esc_url('https://connect.qq.com/widget/shareqq/index.html?url=' . $share_url . '&title=' . $share_title); ?>" title="QQ"></a>
-                    <a class="dshare-icon icon-qzone" target="_blank" rel="noopener" href="<?php echo esc_url('https://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=' . $share_url . '&title=' . $share_title); ?>" title="<?php esc_attr_e('QQ 空间', 'dream2-mxin'); ?>"></a>
-                    <a class="dshare-icon icon-weibo" target="_blank" rel="noopener" href="<?php echo esc_url('https://service.weibo.com/share/share.php?url=' . $share_url . '&title=' . $share_title); ?>" title="<?php esc_attr_e('微博', 'dream2-mxin'); ?>"></a>
-                    <button class="dshare-icon dream-share-icon dream-copy-link" type="button" data-url="<?php echo esc_url(get_permalink()); ?>" title="<?php esc_attr_e('复制链接', 'dream2-mxin'); ?>"><i class="ri-link"></i></button>
-                    <button class="dshare-icon dream-share-icon dream-native-share" type="button" data-url="<?php echo esc_url(get_permalink()); ?>" data-title="<?php echo esc_attr(get_the_title()); ?>" title="<?php esc_attr_e('系统分享', 'dream2-mxin'); ?>"><i class="ri-share-forward-line"></i></button>
+                    <a class="dshare-icon icon-qzone" target="_blank" rel="noopener" href="<?php echo esc_url('https://sns.qzone.qq.com/cgi-bin/qzshare/cgi_qzshare_onekey?url=' . $share_url . '&title=' . $share_title); ?>" title="QQ 空间"></a>
+                    <a class="dshare-icon icon-weibo" target="_blank" rel="noopener" href="<?php echo esc_url('https://service.weibo.com/share/share.php?url=' . $share_url . '&title=' . $share_title); ?>" title="微博"></a>
+                    <button class="dshare-icon dream-share-icon dream-copy-link" type="button" data-url="<?php echo esc_url(get_permalink()); ?>" title="复制链接"><i class="ri-link"></i></button>
+                    <button class="dshare-icon dream-share-icon dream-native-share" type="button" data-url="<?php echo esc_url(get_permalink()); ?>" data-title="<?php echo esc_attr(get_the_title()); ?>" title="系统分享"><i class="ri-share-forward-line"></i></button>
                 </div>
             <?php endif; ?>
         </div>

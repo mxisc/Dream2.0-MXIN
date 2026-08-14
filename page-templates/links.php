@@ -5,10 +5,7 @@ Template Name: Dream 友情链接
 
 get_header();
 $link_groups = array();
-$link_group_terms = function_exists('dream2_mxin_friend_link_group_terms')
-    ? dream2_mxin_friend_link_group_terms()
-    : dream2_mxin_theme_friend_link_group_terms();
-foreach ($link_group_terms as $group) {
+foreach (dream2_mxin_friend_link_group_terms() as $group) {
     $term = $group['term'];
     $group_links = get_bookmarks(array(
         'category' => $term->term_id,
@@ -66,7 +63,7 @@ $fallback_avatar = dream2_get('links_default_avatar', dream2_mxin_asset('img/ava
             <?php endif; ?>
             <?php if (dream2_get('links_info')) : ?><?php echo wp_kses_post(dream2_get('links_info')); ?><?php endif; ?>
 
-            <?php if (function_exists('dream2_mxin_render_link_application_form')) dream2_mxin_render_link_application_form(get_the_ID()); ?>
+            <?php dream2_mxin_render_link_application_form(get_the_ID()); ?>
         </div>
     </div>
 </div>

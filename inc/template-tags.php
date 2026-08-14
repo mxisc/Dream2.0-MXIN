@@ -69,10 +69,16 @@ function dream2_mxin_get_post_views($post_id = null) {
 
 function dream2_mxin_get_total_post_views() {
     global $wpdb;
-
-    return (int) $wpdb->get_var(
+    $cache_key = 'dream2_mxin_total_post_views';
+    $cached = get_transient($cache_key);
+    if (false !== $cached) {
+        return (int) $cached;
+    }
+    $total = (int) $wpdb->get_var(
         "SELECT SUM(CAST(meta_value AS UNSIGNED)) FROM {$wpdb->postmeta} WHERE meta_key = 'post_views_count'"
     );
+    set_transient($cache_key, $total, 5 * MINUTE_IN_SECONDS);
+    return $total;
 }
 
 function dream2_mxin_set_post_views($post_id = null) {
@@ -80,13 +86,24 @@ function dream2_mxin_set_post_views($post_id = null) {
     if (!$post_id || get_post_type($post_id) !== 'post') {
         return;
     }
-    $count = get_post_meta($post_id, 'post_views_count', true);
-    if ($count === '') {
-        delete_post_meta($post_id, 'post_views_count');
-        add_post_meta($post_id, 'post_views_count', '0');
-        return;
+    global $wpdb;
+    $updated = $wpdb->query($wpdb->prepare(
+        "UPDATE {$wpdb->postmeta}
+        SET meta_value = CAST(meta_value AS UNSIGNED) + 1
+        WHERE post_id = %d AND meta_key = 'post_views_count'
+        LIMIT 1",
+        $post_id
+    ));
+    if (!$updated && !add_post_meta($post_id, 'post_views_count', '1', true)) {
+        $wpdb->query($wpdb->prepare(
+            "UPDATE {$wpdb->postmeta}
+            SET meta_value = CAST(meta_value AS UNSIGNED) + 1
+            WHERE post_id = %d AND meta_key = 'post_views_count'
+            LIMIT 1",
+            $post_id
+        ));
     }
-    update_post_meta($post_id, 'post_views_count', (string) ((int) $count + 1));
+    wp_cache_delete($post_id, 'post_meta');
 }
 
 function dream2_mxin_word_count($content) {
@@ -249,15 +266,9 @@ function dream2_mxin_loli_option($name, $default = false) {
     return is_array($options) && array_key_exists($name, $options) ? $options[$name] : $default;
 }
 
-function dream2_mxin_gravatar_host() {
-    switch (dream2_get('avatar_source', dream2_mxin_legacy_avatar_source())) {
-        case 'official':
-            return 'secure.gravatar.com/avatar';
-        case 'qiniu':
-            return 'dn-qiniu-avatar.qbox.me/avatar';
-        default:
-            return 'secure.gravatar.com/avatar';
-    }
+function dream2_mxin_gravatar_url($email, $host = 'secure.gravatar.com/avatar') {
+    $email = trim(strtolower((string) $email));
+    return esc_url_raw('https://' . $host . '/' . md5($email));
 }
 
 function dream2_mxin_qq_avatar_host() {
@@ -272,6 +283,61 @@ function dream2_mxin_qq_avatar_host() {
         default:
             return 'q2.qlogo.cn';
     }
+}
+
+function dream2_mxin_qq_avatar_url($email) {
+    $email = trim((string) $email);
+    if (false === stripos($email, '@qq.com')) {
+        return '';
+    }
+
+    $qq = str_ireplace('@qq.com', '', $email);
+    return preg_match('/^\d+$/', $qq)
+        ? esc_url_raw('https://' . dream2_mxin_qq_avatar_host() . '/headimg_dl?dst_uin=' . $qq . '&spec=100')
+        : '';
+}
+
+function dream2_mxin_default_avatar_url() {
+    return esc_url_raw(dream2_get('links_default_avatar', dream2_mxin_asset('img/avatar.svg')) ?: dream2_mxin_asset('img/avatar.svg'));
+}
+
+function dream2_mxin_profile_user() {
+    static $user = null;
+    static $resolved = false;
+
+    if ($resolved) {
+        return $user;
+    }
+
+    $resolved = true;
+    $admin_email = sanitize_email(get_option('admin_email'));
+    if ($admin_email) {
+        $user = get_user_by('email', $admin_email);
+    }
+
+    if (!$user) {
+        $user = get_userdata(1);
+    }
+
+    return $user instanceof WP_User ? $user : null;
+}
+
+function dream2_mxin_profile_avatar_target() {
+    $user = dream2_mxin_profile_user();
+    return $user ? (int) $user->ID : get_option('admin_email');
+}
+
+function dream2_mxin_profile_display_name() {
+    $user = dream2_mxin_profile_user();
+    if ($user) {
+        foreach (array($user->display_name, $user->nickname, $user->user_login) as $name) {
+            $name = trim((string) $name);
+            if ($name !== '') {
+                return $name;
+            }
+        }
+    }
+    return get_bloginfo('name');
 }
 
 function dream2_mxin_avatar_email_and_user($id_or_email) {
@@ -311,15 +377,29 @@ function dream2_mxin_avatar_url($id_or_email, $size = 48) {
         }
     }
 
-    $email = trim((string) $email);
-    if (false !== stripos($email, '@qq.com')) {
-        $qq = str_ireplace('@qq.com', '', $email);
-        if (preg_match('/^\d+$/', $qq)) {
-            return esc_url_raw('https://' . dream2_mxin_qq_avatar_host() . '/headimg_dl?dst_uin=' . $qq . '&spec=100');
-        }
+    if (dream2_mxin_is_widget_editor_request() || dream2_mxin_is_widget_rest_preview_request()) {
+        return dream2_mxin_default_avatar_url();
     }
 
-    return esc_url_raw('https://' . dream2_mxin_gravatar_host() . '/' . md5(strtolower($email)));
+    $qq_avatar_url = dream2_mxin_qq_avatar_url($email);
+    if ($qq_avatar_url !== '') {
+        return $qq_avatar_url;
+    }
+
+    return dream2_mxin_gravatar_url($email, 'secure.gravatar.com/avatar');
+}
+
+function dream2_mxin_avatar_fallback_urls($id_or_email, $size = 48) {
+    list($email, $user_id) = dream2_mxin_avatar_email_and_user($id_or_email);
+    $fallbacks = array();
+
+    $email = trim((string) $email);
+    if ($email !== '' && dream2_mxin_qq_avatar_url($email) === '') {
+        $fallbacks[] = dream2_mxin_gravatar_url($email, 'dn-qiniu-avatar.qbox.me/avatar');
+    }
+    $fallbacks[] = dream2_mxin_default_avatar_url();
+
+    return array_values(array_unique(array_filter($fallbacks)));
 }
 
 function dream2_mxin_normalize_friend_site_url($url) {
@@ -352,9 +432,12 @@ function dream2_mxin_comment_friend_avatar_url($id_or_email) {
         return '';
     }
 
-    $comment_url = (string) $id_or_email->comment_author_url;
-    static $friend_links = null;
-    if ($friend_links === null) {
+    $comment_host = dream2_mxin_normalize_friend_site_url($id_or_email->comment_author_url);
+    if (!$comment_host) {
+        return '';
+    }
+    static $friend_avatars = null;
+    if ($friend_avatars === null) {
         $args = array(
             'hide_invisible' => true,
             'orderby'        => 'name',
@@ -367,30 +450,30 @@ function dream2_mxin_comment_friend_avatar_url($id_or_email) {
             }
         }
         $bookmarks = get_bookmarks($args);
-        $friend_links = array();
+        $friend_avatars = array();
         foreach ($bookmarks as $bookmark) {
             if (empty($bookmark->link_url) || empty($bookmark->link_image)) {
                 continue;
             }
-            $friend_links[] = array(
-                'url'    => (string) $bookmark->link_url,
-                'avatar' => esc_url_raw($bookmark->link_image),
-            );
+            $host = dream2_mxin_normalize_friend_site_url($bookmark->link_url);
+            if ($host && !isset($friend_avatars[$host])) {
+                $friend_avatars[$host] = esc_url_raw($bookmark->link_image);
+            }
         }
     }
-
-    foreach ($friend_links as $friend_link) {
-        if (dream2_mxin_friend_site_urls_match($comment_url, $friend_link['url'])) {
-            return $friend_link['avatar'];
-        }
-    }
-    return '';
+    return $friend_avatars[$comment_host] ?? '';
 }
 
 function dream2_mxin_loli_avatar($avatar, $id_or_email, $size = 96, $default = '', $alt = '', $args = array()) {
     $url = dream2_mxin_avatar_url($id_or_email, $size);
     $friend_avatar_url = dream2_mxin_comment_friend_avatar_url($id_or_email);
     $display_url = $friend_avatar_url ?: $url;
+    $fallback_urls = array();
+    if ($friend_avatar_url && $url !== $friend_avatar_url) {
+        $fallback_urls[] = $url;
+    }
+    $fallback_urls = array_merge($fallback_urls, dream2_mxin_avatar_fallback_urls($id_or_email, $size));
+    $fallback_urls = array_values(array_filter(array_unique(array_diff($fallback_urls, array($display_url)))));
     $classes = array('avatar', 'avatar-' . (int) $size, 'photo');
     if (!empty($args['class'])) {
         $classes = array_merge($classes, array_filter(array_map('sanitize_html_class', explode(' ', (string) $args['class']))));
@@ -403,15 +486,13 @@ function dream2_mxin_loli_avatar($avatar, $id_or_email, $size = 96, $default = '
         esc_attr(implode(' ', $classes)),
         esc_attr($alt),
         (int) $size,
-        $friend_avatar_url ? ' data-dream-avatar-fallback="' . esc_url($url) . '"' : ''
+        $fallback_urls ? ' data-dream-avatar-fallbacks="' . esc_attr(implode('|', $fallback_urls)) . '"' : ''
     );
 }
 add_filter('get_avatar', 'dream2_mxin_loli_avatar', 10, 6);
 
 function dream2_mxin_comment_callback($comment, $args, $depth) {
-    $is_private = function_exists('dream2_mxin_is_private_comment')
-        ? dream2_mxin_is_private_comment($comment)
-        : (function_exists('dream2_mxin_comment_is_private_safety') && dream2_mxin_comment_is_private_safety($comment));
+    $is_private = dream2_mxin_is_private_comment($comment);
     ?>
     <li <?php comment_class('media dream-comment' . ($is_private ? ' dream-private-comment' : '')); ?> id="comment-<?php comment_ID(); ?>">
         <div class="media-left"><?php echo get_avatar($comment, 48, '', '', array('class' => 'avatar')); ?></div>

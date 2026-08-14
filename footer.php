@@ -44,12 +44,12 @@
                     <?php endif; ?>
                     <?php if (dream2_get('website_time')) : ?>
                         <span class="dream-footer-dot">·</span>
-                        <span id="websiteDate" data-start="<?php echo esc_attr(dream2_get('website_time')); ?>"><?php esc_html_e('建站时间', 'dream2-mxin'); ?></span>
+                        <span id="websiteDate" data-start="<?php echo esc_attr(dream2_get('website_time')); ?>">建站时间</span>
                     <?php endif; ?>
                     <?php if (dream2_enabled('enable_busuanzi')) : ?>
                         <span class="dream-footer-dot">·</span>
-                        <span id="busuanzi_container_site_pv"><?php esc_html_e('访问', 'dream2-mxin'); ?> <span id="busuanzi_value_site_pv"></span> <?php esc_html_e('次', 'dream2-mxin'); ?></span>
-                        <span id="busuanzi_container_site_uv">· <span id="busuanzi_value_site_uv"></span> <?php esc_html_e('位访客', 'dream2-mxin'); ?></span>
+                        <span id="busuanzi_container_site_pv">访问 <span id="busuanzi_value_site_pv"></span> 次</span>
+                        <span id="busuanzi_container_site_uv">· <span id="busuanzi_value_site_uv"></span> 位访客</span>
                     <?php endif; ?>
                 </p>
             </li>

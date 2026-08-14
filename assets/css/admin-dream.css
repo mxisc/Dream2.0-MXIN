@@ -105,99 +105,13 @@
     font-family: "Microsoft YaHei", Arial, "PingFang SC", sans-serif;
 }
 
-.dream2-link-manager.dream2-options-wrap,
-.dream2-plus-settings.dream2-options-wrap,
-.dream2-mail-log.dream2-options-wrap {
+.dream2-link-manager.dream2-options-wrap {
     width: min(1440px, calc(100% - 30px));
 }
 
 .dream2-link-manager-content {
     padding: 26px 16px 18px;
     background: #fff;
-}
-
-.dream2-plus-settings-form {
-    margin: 0;
-}
-
-.dream2-plus-settings-content {
-    min-height: 610px;
-    padding: 26px 16px 18px;
-    background: #fff;
-}
-
-.dream2-plus-settings-board {
-    position: relative;
-    overflow: hidden;
-    border: 1px solid var(--dream-admin-border);
-    border-radius: 10px;
-    background: #fff;
-}
-
-.dream2-plus-settings-board::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 auto;
-    height: 3px;
-    background: linear-gradient(90deg, var(--dream-admin-theme), #b17cff);
-}
-
-.dream2-plus-settings-section {
-    display: block;
-    padding: 26px 20px 28px;
-    border-top: 1px solid #eef2f7;
-}
-
-.dream2-plus-settings-section:first-child {
-    border-top: 0;
-    padding-top: 30px;
-}
-
-.dream2-plus-section-heading {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    margin-bottom: 18px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid #eef2f7;
-}
-
-.dream2-plus-section-heading h2 {
-    margin: 0;
-    color: #1d2327;
-    font-size: 16px;
-    font-weight: 700;
-    line-height: 1.4;
-}
-
-.dream2-plus-section-heading h2::before {
-    content: "";
-    display: inline-block;
-    width: 4px;
-    height: 15px;
-    margin: 0 8px -2px 0;
-    border-radius: 999px;
-    background: var(--dream-admin-theme);
-}
-
-.dream2-plus-section-fields {
-    min-width: 0;
-}
-
-.dream2-plus-settings .dream2-option-group {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    background: transparent;
-}
-
-.dream2-plus-settings .dream2-option-grid {
-    gap: 20px 18px;
-}
-
-.dream2-plus-settings .dream2-option {
-    background: #fbfdff;
-    border-color: #e8edf5;
 }
 
 .dream2-link-page-heading {
@@ -504,8 +418,6 @@
 
 .dream2-option input[type="text"],
 .dream2-option input[type="url"],
-.dream2-option input[type="email"],
-.dream2-option input[type="password"],
 .dream2-option input[type="date"],
 .dream2-option input[type="number"],
 .dream2-option textarea,
@@ -551,8 +463,6 @@
 
 .dream2-option input[type="text"]:focus,
 .dream2-option input[type="url"]:focus,
-.dream2-option input[type="email"]:focus,
-.dream2-option input[type="password"]:focus,
 .dream2-option input[type="date"]:focus,
 .dream2-option input[type="number"]:focus,
 .dream2-option textarea:focus,
@@ -621,8 +531,7 @@
     color: var(--dream-admin-main);
 }
 
-.dream2-radio-group input[type="radio"],
-.dream2-radio-group input[type="checkbox"] {
+.dream2-radio-group input[type="radio"] {
     margin: 0;
 }
 
@@ -1671,7 +1580,7 @@
 }
 
 .dream2-mail-log {
-    max-width: none;
+    max-width: 1600px;
     overflow: hidden;
     border-radius: 10px;
     background: #fff;
@@ -1869,17 +1778,11 @@
         margin: 20px 10px 0 0;
     }
 
-    .dream2-link-manager.dream2-options-wrap,
-    .dream2-plus-settings.dream2-options-wrap,
-    .dream2-mail-log.dream2-options-wrap {
+    .dream2-link-manager.dream2-options-wrap {
         width: calc(100% - 20px);
     }
 
     .dream2-link-manager-content {
-        padding: 20px 12px 14px;
-    }
-
-    .dream2-plus-settings-content {
         padding: 20px 12px 14px;
     }
 

@@ -47,9 +47,9 @@
     <div class="navbar-slideout">
         <div class="navbar-slideout-wrap">
             <div class="navbar-slideout-author">
-                <?php echo get_avatar(get_option('admin_email'), 50, '', '', array('class' => 'avatar')); ?>
+                <?php echo get_avatar(dream2_mxin_profile_avatar_target(), 50, '', '', array('class' => 'avatar')); ?>
                 <div class="info">
-                    <p class="link"><?php echo esc_html(dream2_get('metadata_name', get_bloginfo('name')) ?: get_bloginfo('name')); ?></p>
+                    <p class="link"><?php echo esc_html(dream2_mxin_profile_display_name()); ?></p>
                     <p class="motto"><?php bloginfo('description'); ?></p>
                 </div>
             </div>
@@ -67,7 +67,7 @@
                 <ul class="navbar-slideout-menu dream-drawer-stats">
                     <?php foreach ($drawer_stats as $stat) :
                         $type = sanitize_key($stat['type'] ?? 'post');
-                        $label = $stat['title'] ?? array('post'=>__('文章', 'dream2-mxin'),'comment'=>__('评论', 'dream2-mxin'),'category'=>__('分类', 'dream2-mxin'),'tag'=>__('标签', 'dream2-mxin'),'visit'=>__('访问', 'dream2-mxin'))[$type] ?? $type;
+                        $label = $stat['title'] ?? array('post'=>'文章','comment'=>'评论','category'=>'分类','tag'=>'标签','visit'=>'访问')[$type] ?? $type;
                         $value = $stat_values[$type] ?? ($stat['value'] ?? $stat['tag'] ?? '');
                         ?>
                         <li class="item"><div><i class="<?php echo esc_attr($stat['icon'] ?? 'ri-bar-chart-line'); ?>"></i><span><?php echo esc_html($label); ?> <strong><?php echo esc_html((string) $value); ?></strong></span></div></li>
@@ -92,7 +92,7 @@
                 </li>
             </ul>
             <?php if (is_singular() && dream2_enabled('drawer_toc', true)) : ?>
-                <ul class="navbar-slideout-menu dream-drawer-toc"><li><span class="link"><?php esc_html_e('文章目录', 'dream2-mxin'); ?></span><ol></ol></li></ul>
+                <ul class="navbar-slideout-menu dream-drawer-toc"><li><span class="link">文章目录</span><ol></ol></li></ul>
             <?php endif; ?>
         </div>
     </div>
