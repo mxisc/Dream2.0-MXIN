@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DREAM2_MXIN_VERSION', '0.7.44');
+define('DREAM2_MXIN_VERSION', '0.7.45');
 
 // Keep the public layout identical for signed-in and signed-out visitors.
 add_filter('show_admin_bar', '__return_false');

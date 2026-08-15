@@ -571,20 +571,24 @@
     $(document).on('click', '.dream-comment-toolbar [data-comment-action]', function () {
         var editor = this.closest('.dream-comment-editor').querySelector('.dream-comment-rich-editor');
         if (!editor) return;
-        var currentSelection = window.getSelection();
-        if (editor._dreamSelection && currentSelection) {
-            currentSelection.removeAllRanges();
-            currentSelection.addRange(editor._dreamSelection);
-        } else if (!currentSelection || !currentSelection.rangeCount || !editor.contains(currentSelection.anchorNode)) {
-            editor.focus();
-        }
         var action = this.dataset.commentAction;
+        var currentSelection = window.getSelection();
         if (action === 'emoji') {
+            if (!editor._dreamSelection && currentSelection && currentSelection.rangeCount && editor.contains(currentSelection.anchorNode)) {
+                editor._dreamSelection = currentSelection.getRangeAt(0).cloneRange();
+            }
+            if (document.activeElement === editor) editor.blur();
             var emojiButton = this;
             loadCommentEmojiGroups().then(function (groups) {
                 if (groups.length && editor.isConnected) toggleCommentEmojiPicker(editor, emojiButton);
             });
             return;
+        }
+        if (editor._dreamSelection && currentSelection) {
+            currentSelection.removeAllRanges();
+            currentSelection.addRange(editor._dreamSelection);
+        } else if (!currentSelection || !currentSelection.rangeCount || !editor.contains(currentSelection.anchorNode)) {
+            editor.focus();
         }
         applyCommentFormat(editor, action);
         var activeTags = {
