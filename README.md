@@ -1,6 +1,6 @@
 # Dream 2.0 MXIN
 
-## v0.7.45
+## v0.7.46
 
 Dream 2.0 MXIN 是基于原版
 [Dream（nineya/halo-theme-dream2.0）](https://github.com/nineya/halo-theme-dream2.0)

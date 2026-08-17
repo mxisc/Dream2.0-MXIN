@@ -1789,6 +1789,9 @@
 
     if (Dream2WP.copyExplain) {
         document.addEventListener('copy', function (event) {
+            if (document.querySelector('.dream-links-page')) {
+                return;
+            }
             var text = window.getSelection().toString();
             if (!text || !event.clipboardData) {
                 return;

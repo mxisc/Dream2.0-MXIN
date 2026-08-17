@@ -292,7 +292,7 @@ function dream2_mxin_render_link_application_form($post_id) {
     ?>
     <section id="dream2-link-application" class="dream-link-application">
         <h2><i class="ri-links-line" aria-hidden="true"></i><?php esc_html_e('自助申请友链', 'dream2-mxin'); ?></h2>
-        <p class="dream-link-application-help"><?php esc_html_e('提交前请先在你的站点放好本站链接。邮箱和反链检测页只用于审核，不会出现在评论内容里。', 'dream2-mxin'); ?></p>
+        <p class="dream-link-application-help"><?php esc_html_e('提交前请先在你的站点放好本站链接。填写贵站友链页面的URL可以自动审核。', 'dream2-mxin'); ?></p>
         <?php echo dream2_mxin_link_application_notice(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
         <form class="dream-link-application-form" method="post" action="<?php echo esc_url(admin_url('admin-ajax.php')); ?>">
             <input type="hidden" name="action" value="dream2_submit_link_application">

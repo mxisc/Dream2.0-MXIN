@@ -53,7 +53,7 @@ $fallback_avatar = dream2_get('links_default_avatar', dream2_mxin_asset('img/ava
                 $blogger_avatar = dream2_get('links_blogger_avatar', get_site_icon_url()) ?: $fallback_avatar;
                 $blogger_description = dream2_get('links_blogger_description', get_bloginfo('description'));
                 ?>
-                <?php esc_html_e('申请友链的方法：', 'dream2-mxin'); ?>
+                <?php esc_html_e('本站信息：', 'dream2-mxin'); ?>
                 <ul>
                     <li><?php printf(esc_html__('名称：%s', 'dream2-mxin'), esc_html($blogger_name)); ?></li>
                     <li><?php esc_html_e('地址：', 'dream2-mxin'); ?><a href="<?php echo esc_url($blogger_url); ?>"><?php echo esc_html($blogger_url); ?></a></li>
