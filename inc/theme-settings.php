@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 function dream2_mxin_settings_groups() {
     return array(
         'site' => '站点信息', 'appearance' => '外观特效', 'home_layout' => '首页布局',
-        'content_page' => '内容页面', 'sidebar' => '侧栏模块', 'communication' => '评论邮件',
+        'content_page' => '内容页面', 'communication' => '评论邮件',
         'performance' => '性能统计', 'advanced' => '高级设置',
     );
 }
@@ -42,15 +42,6 @@ function dream2_mxin_settings_subgroups() {
             array('label' => '阅读与分享', 'fields' => array('drawer_toc', 'invalid_tips_day', 'enable_copyright', 'enable_post_share')),
             array('label' => '文章归档', 'fields' => array('enable_archivers_route', 'archivers_route_slug')),
             array('label' => '朋友圈页面', 'fields' => array('enable_friends_stats')),
-        ),
-        'sidebar' => array(
-            array('label' => '信息模块', 'fields' => array('profile_location', 'custom_stats', 'profile_theme_button', 'custom_options')),
-            array('label' => '公告与列表', 'fields' => array('notice_content', 'notice_show_mode', 'recent_posts_num', 'recent_comments_num')),
-            array('label' => '分类与标签', 'fields' => array('categories_num', 'tags_num', 'enable_tag_color', 'tagcloud_num', 'enable_tagcloud_color')),
-            array('label' => '恋爱墙', 'fields' => array('love_oneself_avatar', 'love_oneself_url', 'love_opposite_avatar', 'love_opposite_url', 'love_time')),
-            array('label' => '侧栏彩字', 'fields' => array('enable_color_character', 'enable_hitokoto', 'hitokoto_category', 'hitokoto_custom_url', 'color_character')),
-            array('label' => '音乐播放器', 'fields' => array('music_mode', 'netease_playlist_id', 'meting_api', 'music_config')),
-            array('label' => '广告模块', 'fields' => array('ad_mode', 'show_ad_tag', 'ad_tag_close', 'ad_target_url', 'ad_image', 'ad_custom_code')),
         ),
         'communication' => array(
             array('label' => '私密评论', 'fields' => array('enable_private_comment')),
@@ -1334,7 +1325,6 @@ function dream2_mxin_settings_registry() {
         'appearance' => 'theme_style|主题风格,default_theme|默认主题模式,theme_color|明亮模式主题色,night_theme_color|黑暗模式主题色,font_preset|博客字体,web_font|自定义字体 CSS 链接,custom_font|自定义字体名称,night_logo|黑暗模式 Logo,enable_image_bg|开启博客背景图,card_opacity|卡片透明度,background_image_opacity|背景图透明度,background_pc|明亮模式 PC 背景图,background_mobile|明亮模式移动端背景图,night_background_pc|黑暗模式 PC 背景图,night_background_mobile|黑暗模式移动端背景图,cursor_style|鼠标风格,cursor_move|鼠标移动特效,cursor_click|鼠标点击特效,effects_lantern_mode|灯笼特效,effects_sakura_mode|樱花特效,effects_snowflake_mode|雪花特效,effects_universe_mode|宇宙星空特效,effects_circle_magic_mode|上升圆点特效,enable_gray_mode|灰色模式',
         'home_layout' => 'index_inform|首页通知,enable_banner|开启博客横幅大图,banner_image|横幅背景图,banner_description|横幅文字描述,sidebar_column|博客布局方式,carousel_options|首页大图轮播选项,module_options|模块化布局选项,left_sidebar_sticky|左侧边栏悬浮,right_sidebar_sticky|右侧边栏悬浮',
         'content_page' => 'default_thumbnail|默认文章封面图,top_thumbnail_mode|置顶文章封面模式,thumbnail_mode|文章列表封面模式,drawer_toc|侧边抽屉式目录,code_pretty|代码块高亮主题,code_fold_line|代码块折叠行数（0-500）,img_fold_height|正文长图折叠高度（0-3000px）,show_img_name|显示图片名称,invalid_tips_day|文章失效提示天数,enable_katex|KaTeX 公式支持,enable_copyright|开启文章版权声明,enable_post_share|开启文章分享,enable_archivers_route|启用文章归档页,archivers_route_slug|文章归档路径,enable_friends_stats|朋友圈统计信息',
-        'sidebar' => 'profile_location|地理位置,custom_stats|侧栏统计项目,profile_theme_button|主题按钮,custom_options|社交渠道,notice_content|博客公告,notice_show_mode|公告显示模式,recent_posts_num|最近文章数量,recent_comments_num|最近评论数量,categories_num|分类展示数量,tags_num|标签展示数量,enable_tag_color|开启标签颜色,tagcloud_num|标签云展示数量,enable_tagcloud_color|开启标签云颜色,love_oneself_avatar|恋爱墙自己的头像,love_oneself_url|恋爱墙自己的主页,love_opposite_avatar|恋爱墙对方的头像,love_opposite_url|恋爱墙对方的主页,love_time|恋爱时间,enable_color_character|开启彩字切换,enable_hitokoto|一言 API,hitokoto_category|一言分类,hitokoto_custom_url|自定义一言 URL,color_character|侧栏彩字内容,meting_api|自建 Meting API,music_mode|音乐播放器配置方式,netease_playlist_id|网易云歌单 ID,music_config|音乐参数进阶配置,show_ad_tag|显示广告标签,ad_tag_close|广告标签可关闭,ad_mode|广告展示方法,ad_target_url|广告目标地址,ad_image|广告图片链接,ad_custom_code|自定义广告代码',
         'communication' => 'enable_private_comment|允许私密评论,comment_emoji_groups|评论表情分组,enable_smtp|启用 SMTP,smtp_host|SMTP 主机,smtp_port|SMTP 端口,smtp_secure|加密方式,smtp_username|SMTP 账号,smtp_password|SMTP 密码,smtp_from_email|发件邮箱,smtp_from_name|发件名称,email_notify_post_author|新评论提醒,email_notify_moderator|待审核评论提醒,email_notify_reply|回评提醒,link_notify_recovered|友链博客恢复提醒,link_notify_one_way|友链博客单向提醒,link_notify_abnormal|友链博客异常提醒,link_notify_lost|友链博客失联提醒',
         'link' => 'link_takeover_categories|梦屿接管友链分类,link_friend_category|友情链接分类,link_one_way_category|单向友链分类,link_abnormal_category|异常博客分类,link_lost_category|失联博客分类,enable_auto_link_check|自动检测友链,link_check_interval|自动检测周期,link_check_batch_size|每批检测数量,link_check_failure_threshold|连续失败阈值,link_check_abnormal_days|失联博客阈值,link_auto_move_one_way|自动移动单向友链,link_auto_move_abnormal|自动移动异常与失联分组,links_thumbnail|友链页面封面图,links_default_avatar|友链默认 Logo,show_exchange_info|显示友链交换信息,links_blogger_name|交换信息名称,links_blogger_url|交换信息地址,links_blogger_avatar|交换信息 Logo,links_blogger_description|交换信息描述,links_info|友链补充信息,link_enable_comment|友链页面评论,enable_link_application|自助申请友链',
         'performance' => 'load_progress|加载进度条,enable_sw|Service Worker 优化,enable_pjax|PJAX 加载,enable_busuanzi|不蒜子访客统计,enable_baidu_push|百度 URL 自动推送,enable_toutiao_push|头条 URL 自动推送',

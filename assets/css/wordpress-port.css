@@ -899,6 +899,67 @@ html.dream-load-progress-enabled.dream-pjax-loading:not(.dream-dprogress-active)
     padding: 1rem;
 }
 
+.dream2-wordpress .widget.dream-releases .dream-release-list {
+    max-height: 260px;
+    overflow: auto;
+    padding-right: 6px;
+}
+
+.dream2-wordpress .widget.dream-releases .dream-release-error {
+    margin: 0;
+    color: var(--dark-b);
+    line-height: 1.6;
+}
+
+.dream2-wordpress .widget.dream-releases .dream-release-error a {
+    margin-left: .35rem;
+}
+
+.dream2-wordpress .widget.dream-releases .dream-release-item:not(:last-child) {
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed var(--light-b);
+}
+
+.dream2-wordpress .widget.dream-releases .dream-release-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 0 0 6px;
+}
+
+.dream2-wordpress .widget.dream-releases .dream-release-version {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--theme);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dream2-wordpress .widget.dream-releases .dream-release-date {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--dark-c);
+    background: var(--bg-c);
+    font-size: .78rem;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+.dream2-wordpress .widget.dream-releases .dream-release-notes {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--main);
+    line-height: 1.55;
+    white-space: pre-line;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+}
+
 .dream2-wordpress .dream-author-card {
     text-align: center;
 }

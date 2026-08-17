@@ -1246,8 +1246,9 @@
         });
     };
     function initializeColorTags(root) {
-        if (Dream2WP.colorTags) colorizeTags(root || document, '.widget.tags a');
-        if (Dream2WP.colorTagCloud) colorizeTags(root || document, '.widget.tagcloud a');
+        var scope = root || document;
+        colorizeTags(scope, '.widget.tags.dream-tags-colored a');
+        colorizeTags(scope, '.widget.tagcloud.dream-tagcloud-colored a');
     }
     initializeColorTags(document);
     document.addEventListener('dream2:page-loaded', function () { initializeColorTags(document); });

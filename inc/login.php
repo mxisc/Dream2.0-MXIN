@@ -46,6 +46,15 @@ function dream2_mxin_login_request_action() {
     return is_string($action) ? sanitize_key(wp_unslash($action)) : '';
 }
 
+function dream2_mxin_login_disable_remember_me() {
+    $action = dream2_mxin_login_request_action();
+    if (!in_array($action, array('', 'login'), true)) {
+        return;
+    }
+    unset($_POST['rememberme'], $_REQUEST['rememberme']);
+}
+add_action('login_init', 'dream2_mxin_login_disable_remember_me');
+
 function dream2_mxin_login_is_interactive_request() {
     $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
     $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
@@ -125,6 +134,17 @@ add_action('wp_login', 'dream2_mxin_login_clear_rate_limit');
 
 function dream2_mxin_login_normalize_page_errors($errors) {
     if (!($errors instanceof WP_Error)) {
+        return $errors;
+    }
+    $checkemail = isset($_GET['checkemail']) && is_string($_GET['checkemail']) ? sanitize_key(wp_unslash($_GET['checkemail'])) : '';
+    if ($checkemail === 'confirm' || $checkemail === 'registered') {
+        foreach (array('confirm', 'registered') as $code) {
+            $errors->remove($code);
+        }
+        $message = $checkemail === 'registered'
+            ? '注册完成。请检查邮箱，然后返回 <a href="' . esc_url(wp_login_url()) . '">登录页</a>。'
+            : '请检查邮箱中的确认链接，然后返回 <a href="' . esc_url(wp_login_url()) . '">登录页</a>。';
+        $errors->add($checkemail, $message, 'message');
         return $errors;
     }
     $sensitive = array('invalid_username', 'invalid_email', 'incorrect_password', 'authentication_failed', 'spammer_account', 'dream2_login_limited');
@@ -238,9 +258,11 @@ function dream2_mxin_login_enqueue_assets() {
     );
     $theme = sanitize_hex_color(dream2_get('theme_color', '#50bfff')) ?: '#50bfff';
     $night = sanitize_hex_color(dream2_get('night_theme_color', '#5d93db')) ?: '#5d93db';
+    $site_icon = get_site_icon_url(96) ?: dream2_mxin_asset('img/avatar.svg');
+    $login_background = dream2_mxin_asset('img/login-background.webp');
     wp_add_inline_style(
         'dream2-mxin-login',
-        ':root{--dream2-login-accent:' . $theme . ';--dream2-login-accent-night:' . $night . ';}'
+        ':root{--dream2-login-accent:' . $theme . ';--dream2-login-accent-night:' . $night . ';--dream2-login-icon:url("' . esc_url_raw($site_icon) . '");--dream2-login-background:url("' . esc_url_raw($login_background) . '");}'
     );
 }
 add_action('login_enqueue_scripts', 'dream2_mxin_login_enqueue_assets');
@@ -250,6 +272,23 @@ function dream2_mxin_login_body_class($classes) {
     return $classes;
 }
 add_filter('login_body_class', 'dream2_mxin_login_body_class');
+
+function dream2_mxin_login_disable_language_switcher() {
+    return false;
+}
+add_filter('login_display_language_dropdown', 'dream2_mxin_login_disable_language_switcher');
+
+function dream2_mxin_login_force_site_locale($locale) {
+    $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    if ($script !== 'wp-login.php') {
+        return $locale;
+    }
+
+    $site_locale = (string) get_option('WPLANG');
+    return $site_locale !== '' ? $site_locale : $locale;
+}
+add_filter('locale', 'dream2_mxin_login_force_site_locale', 20);
+add_filter('determine_locale', 'dream2_mxin_login_force_site_locale', 20);
 
 function dream2_mxin_login_header_url() {
     return home_url('/');
@@ -264,11 +303,98 @@ add_filter('login_headertext', 'dream2_mxin_login_header_text');
 function dream2_mxin_login_message($message) {
     $action = dream2_mxin_login_request_action();
     if (($action === '' || $action === 'login') && trim((string) $message) === '') {
-        return '<p class="dream2-login-intro">' . esc_html__('登录站点后台', 'dream2-mxin') . '</p>';
+        return '';
+    }
+    if (in_array($action, array('lostpassword', 'retrievepassword'), true)) {
+        return '<div class="notice notice-info message"><p>' . esc_html__('请输入账号或邮箱，我们会发送重置密码的邮件。', 'dream2-mxin') . '</p></div>';
     }
     return $message;
 }
 add_filter('login_message', 'dream2_mxin_login_message');
+
+function dream2_mxin_login_footer_script() {
+    $action = dream2_mxin_login_request_action();
+    if (!in_array($action, array('', 'login', 'lostpassword', 'retrievepassword'), true)) {
+        return;
+    }
+    $is_reset = in_array($action, array('lostpassword', 'retrievepassword'), true);
+    ?>
+    <script>
+    document.getElementById('user_login')?.setAttribute('placeholder', '<?php echo esc_js($is_reset ? '请输入账号或邮箱' : '请输入账号'); ?>');
+    document.getElementById('user_pass')?.setAttribute('placeholder', '请输入密码');
+    document.querySelector('.forgetmenot')?.remove();
+    document.getElementById('wp-submit')?.setAttribute('value', '<?php echo esc_js($is_reset ? '发送重置邮件' : '登录'); ?>');
+    <?php if ($is_reset) : ?>
+    const dream2LoginLink = document.querySelector('.wp-login-log-in');
+    if (dream2LoginLink) {
+        dream2LoginLink.textContent = '返回登录';
+    }
+    <?php endif; ?>
+    const dream2LostLink = document.querySelector('.wp-login-lost-password');
+    if (dream2LostLink) {
+        dream2LostLink.textContent = '忘记密码？';
+    }
+    const dream2BackLink = document.querySelector('#backtoblog a');
+    if (dream2BackLink) {
+        dream2BackLink.textContent = dream2BackLink.textContent.replace(/^←\s*(?:Go to|返回到)\s*/, '← 返回到 ');
+    }
+    </script>
+    <?php
+}
+add_action('login_footer', 'dream2_mxin_login_footer_script');
+
+function dream2_mxin_login_gettext($translated, $text, $domain) {
+    unset($domain);
+
+    $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    $action = dream2_mxin_login_request_action();
+    if ($script !== 'wp-login.php' || !in_array($action, array('', 'login', 'lostpassword', 'retrievepassword'), true)) {
+        return $translated;
+    }
+
+    $source = array(
+        'Username or Email Address' => '账号',
+        'Username or Email'         => '账号',
+        'Password'                  => '密码',
+        'Lost Password'             => '忘记密码',
+        'Check your email'          => '检查邮箱',
+        'Log In'                    => '登录',
+        'Log in'                    => '登录',
+        'Get New Password'          => '发送重置邮件',
+        'Lost your password?'       => '忘记密码？',
+        'Show password'             => '显示密码',
+        'Hide password'             => '隐藏密码',
+        '&larr; Go to %s'           => '&larr; 返回到 %s',
+        'Go to %s'                  => '返回到 %s',
+    );
+    if (isset($source[$text])) {
+        return $source[$text];
+    }
+
+    $localized = array(
+        '用户名或电子邮箱地址' => '账号',
+        '用户名或电子邮件地址' => '账号',
+    );
+    return $localized[$translated] ?? $translated;
+}
+add_filter('gettext', 'dream2_mxin_login_gettext', 10, 3);
+
+function dream2_mxin_login_gettext_with_context($translated, $text, $context, $domain) {
+    unset($context, $domain);
+
+    $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
+    $action = dream2_mxin_login_request_action();
+    if ($script !== 'wp-login.php' || !in_array($action, array('', 'login', 'lostpassword', 'retrievepassword'), true)) {
+        return $translated;
+    }
+
+    $source = array(
+        '&larr; Go to %s' => '&larr; 返回到 %s',
+        'Go to %s'        => '返回到 %s',
+    );
+    return $source[$text] ?? $translated;
+}
+add_filter('gettext_with_context', 'dream2_mxin_login_gettext_with_context', 10, 4);
 
 function dream2_mxin_prepare_login_security() {
     dream2_mxin_login_dummy_hash();

@@ -54,7 +54,14 @@
                 </div>
             </div>
             <?php
-            $drawer_stats = dream2_mxin_parse_repeater(dream2_get('custom_stats', ''));
+            $drawer_stats = dream2_mxin_normalize_repeater(
+                dream2_mxin_widget_module_value(
+                    dream2_mxin_widget_first_active_instance('dream2_profile'),
+                    'custom_stats',
+                    dream2_get('custom_stats', '')
+                ),
+                'custom_stats'
+            );
             if ($drawer_stats) :
                 $stat_values = array(
                     'post'     => (int) wp_count_posts('post')->publish,

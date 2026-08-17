@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DREAM2_MXIN_VERSION', '0.7.46');
+define('DREAM2_MXIN_VERSION', '0.7.47');
 
 // Keep the public layout identical for signed-in and signed-out visitors.
 add_filter('show_admin_bar', '__return_false');
@@ -370,13 +370,16 @@ function dream2_mxin_enqueue_assets() {
         wp_enqueue_script('dream2-swiper', dream2_mxin_asset('lib/swiper@8.4.6/swiper-bundle.min.js'), array(), '8.4.6', true);
         $port_dependencies[] = 'dream2-swiper';
     }
-    $color_character_enabled = !$lightweight_widget_context && dream2_enabled('enable_color_character');
-    $hitokoto_mode = dream2_get('enable_hitokoto', '0');
+    $profile_widget = dream2_mxin_widget_first_active_instance_with_value('dream2_profile', 'enable_color_character', '0');
+    $music_widget = dream2_mxin_widget_first_active_instance_with_value('dream2_music', 'music_mode', 'none');
+    $color_character_enabled = !$lightweight_widget_context && dream2_mxin_widget_module_enabled($profile_widget, 'enable_color_character', dream2_enabled('enable_color_character'));
+    $hitokoto_mode = dream2_mxin_normalize_hitokoto_mode(dream2_mxin_widget_module_value($profile_widget, 'enable_hitokoto', dream2_get('enable_hitokoto', '0')));
     $hitokoto_enabled = $color_character_enabled && $hitokoto_mode !== '0';
-    $hitokoto_category = sanitize_key(dream2_get('hitokoto_category', 'all'));
+    $hitokoto_category = sanitize_key(dream2_mxin_widget_module_value($profile_widget, 'hitokoto_category', dream2_get('hitokoto_category', 'all')));
     $hitokoto_url = 'https://v1.hitokoto.cn/?encode=json';
-    if ($hitokoto_mode === 'custom' && dream2_get('hitokoto_custom_url')) {
-        $hitokoto_url = esc_url_raw(dream2_get('hitokoto_custom_url'));
+    $hitokoto_custom_url = dream2_mxin_widget_module_value($profile_widget, 'hitokoto_custom_url', dream2_get('hitokoto_custom_url', ''));
+    if ($hitokoto_mode === 'custom' && $hitokoto_custom_url) {
+        $hitokoto_url = esc_url_raw($hitokoto_custom_url);
     } elseif ($hitokoto_mode === 'official' && preg_match('/^[a-l]$/', $hitokoto_category)) {
         $hitokoto_url = add_query_arg(array('encode' => 'json', 'c' => $hitokoto_category), 'https://v1.hitokoto.cn/');
     }
@@ -416,7 +419,8 @@ function dream2_mxin_enqueue_assets() {
     if (!$lightweight_widget_context && dream2_enabled('enable_busuanzi')) {
         wp_enqueue_script('dream2-busuanzi', 'https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js', array(), null, true);
     }
-    if (!$lightweight_widget_context && dream2_get('music_mode', 'none') !== 'none') {
+    $music_mode = dream2_mxin_widget_module_value($music_widget, 'music_mode', dream2_get('music_mode', 'none'));
+    if (!$lightweight_widget_context && $music_mode !== 'none') {
         wp_enqueue_style('dream2-aplayer', dream2_mxin_asset('lib/aplayer@1.10.1/APlayer.min.css'), array(), '1.10.1');
         wp_enqueue_script('dream2-aplayer', dream2_mxin_asset('lib/aplayer@1.10.1/APlayer.min.js'), array(), '1.10.1', true);
         wp_enqueue_script('dream2-meting', dream2_mxin_asset('lib/meting@2.0.1/Meting.min.js'), array('dream2-aplayer'), '2.0.1', true);
@@ -444,7 +448,7 @@ function dream2_mxin_enqueue_assets() {
         'cursorMove'    => dream2_get('cursor_move', 'none'),
         'cursorClick'   => dream2_get('cursor_click', 'none'),
         'desktopEffectScripts' => $desktop_effect_scripts,
-        'noticeMode'    => dream2_get('notice_show_mode', 'default'),
+        'noticeMode'    => dream2_mxin_widget_module_value(dream2_mxin_widget_first_active_instance('dream2_notice'), 'notice_show_mode', dream2_get('notice_show_mode', 'default')),
         'sakuraMode'    => dream2_get('effects_sakura_mode', 'none'),
         'snowflakeMode' => dream2_get('effects_snowflake_mode', 'none'),
         'universeMode'  => dream2_get('effects_universe_mode', 'none'),
@@ -456,16 +460,14 @@ function dream2_mxin_enqueue_assets() {
         'showImageName' => dream2_enabled('show_img_name'),
         'enableKatex'   => $singular_has_katex,
         'enableShare'   => dream2_enabled('enable_post_share'),
-        'metingApi'     => dream2_get('meting_api', ''),
+        'metingApi'     => dream2_mxin_widget_module_value($music_widget, 'meting_api', dream2_get('meting_api', '')),
         'enablePjax'    => dream2_enabled('enable_pjax'),
         'enableServiceWorker' => dream2_enabled('enable_sw'),
         'serviceWorkerUrl' => add_query_arg('dream2_sw', '1', home_url('/')),
         'enableHitokoto' => $hitokoto_enabled,
         'hitokotoUrl'    => $hitokoto_url,
         'enableColorCharacter' => $color_character_enabled,
-        'colorCharacters' => $color_character_enabled && !$hitokoto_enabled ? preg_split('/\R+/', (string) dream2_get('color_character', '')) : array(),
-        'colorTags'      => dream2_enabled('enable_tag_color'),
-        'colorTagCloud'  => dream2_enabled('enable_tagcloud_color'),
+        'colorCharacters' => $color_character_enabled && !$hitokoto_enabled ? preg_split('/\R+/', (string) dream2_mxin_widget_module_value($profile_widget, 'color_character', dream2_get('color_character', ''))) : array(),
         'enableBaiduPush'   => !$lightweight_widget_context && dream2_enabled('enable_baidu_push'),
         'enableToutiaoPush' => !$lightweight_widget_context && dream2_enabled('enable_toutiao_push'),
         'ajaxUrl'            => admin_url('admin-ajax.php'),
