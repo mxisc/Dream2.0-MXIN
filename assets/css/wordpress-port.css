@@ -1718,3 +1718,25 @@ html.night .dream-search-footer kbd {
 .dream-private-comment-hidden i {
     margin-right: .3rem;
 }
+
+/* iPad 仍属于触控导航场景，避免桌面端仅依赖 hover 的菜单无法展开。 */
+@media (max-width: 1024px) {
+    .dream2-wordpress .navbar .container {
+        justify-content: space-between;
+        min-height: 3.5rem;
+        padding: 0 1.5rem;
+    }
+
+    .dream2-wordpress .navbar .container .navbar-slideicon {
+        display: block;
+        touch-action: manipulation;
+    }
+
+    .dream2-wordpress .navbar .container .navbar-nav {
+        display: none;
+    }
+
+    .dream2-wordpress .navbar .container .navbar-searchicon {
+        margin-left: 0;
+    }
+}
