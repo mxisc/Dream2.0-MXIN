@@ -12,6 +12,7 @@ if (!defined('ABSPATH')) {
 const DREAM2_MXIN_PRIVATE_META = 'private_comment';
 const DREAM2_MXIN_PRIVATE_COOKIE_PREFIX = 'dream2_private_comment_';
 const DREAM2_MXIN_COMMENT_IDENTITY_COOKIE = 'dream2_comment_identity_';
+const DREAM2_MXIN_COMMENT_IDENTITY_META = '_dream2_comment_identity_hash';
 
 function dream2_mxin_normalize_comment_identity_name($name) {
     $name = sanitize_text_field((string) $name);
@@ -170,6 +171,7 @@ function dream2_mxin_set_commenter_cookies($comment_id) {
         $comment->comment_author_url
     );
     if ($identity_token && !dream2_mxin_registered_comment_user($comment->comment_author_email)) {
+        update_comment_meta($comment->comment_ID, DREAM2_MXIN_COMMENT_IDENTITY_META, hash('sha256', $identity_token));
         $identity_cookie = dream2_mxin_comment_identity_cookie_name();
         setcookie($identity_cookie, $identity_token, $args);
         $_COOKIE[$identity_cookie] = $identity_token;

@@ -18,9 +18,16 @@
 </section>
 
 <div class="actions">
+    <?php if (dream2_mxin_enhancer_active()) : ?>
+        <?php do_action('dream2_mxin_enhancer_actions'); ?>
+    <?php endif; ?>
     <div id="toggle-mode" role="button" aria-label="<?php esc_attr_e('切换深色模式', 'dream2-mxin'); ?>"><i class="ri-contrast-fill"></i></div>
     <div id="back-to-top" role="button" aria-label="<?php esc_attr_e('返回顶部', 'dream2-mxin'); ?>"><i class="ri-arrow-up-line"></i></div>
 </div>
+
+<?php if (dream2_mxin_enhancer_active()) : ?>
+    <?php do_action('dream2_mxin_enhancer_panels'); ?>
+<?php endif; ?>
 
 <footer class="footer">
     <div class="container">

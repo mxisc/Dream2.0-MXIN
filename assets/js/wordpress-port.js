@@ -935,6 +935,41 @@
 
     var searchTimer = null;
     var searchActiveIndex = -1;
+    var searchCommands = {
+        help: function () {
+            return { title: '可用命令', detail: 'help · whoami · status · root' };
+        },
+        whoami: function () {
+            var save = readVisitorSave();
+            return save
+                ? { title: 'LV.' + (save.level || 1) + ' ' + (save.rank || '游客'), detail: 'ID ' + String(save.visitorId || 'UNKNOWN').slice(0, 12) + ' · XP ' + (save.xp || 0) }
+                : { title: '游客', detail: '本地存档尚未建立或已关闭' };
+        },
+        status: function () {
+            var save = readVisitorSave();
+            return {
+                title: 'SYSTEM STATUS · ONLINE',
+                detail: save ? '访问 ' + (save.visits || 0) + ' 次 · 页面 ' + (save.pageViews || 0) + ' · 成就 ' + Object.keys(save.achievements || {}).length : '访客存档未连接'
+            };
+        },
+        root: function () {
+            return { title: '权限不足', detail: 'ROOT ACCESS DENIED · 管理员入口已锁定' };
+        }
+    };
+
+    function readVisitorSave() {
+        try {
+            return JSON.parse(window.localStorage.getItem('dream2_visitor_save_v1'));
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function resolveSearchCommand(query) {
+        if (!Dream2WP.searchCommandsEnabled) return null;
+        var command = query.toLowerCase().replace(/^\//, '');
+        return Object.prototype.hasOwnProperty.call(searchCommands, command) ? searchCommands[command]() : null;
+    }
 
     function updateSearchActive(index) {
         var items = Array.prototype.slice.call(document.querySelectorAll('.dream-search-result'));
@@ -970,10 +1005,14 @@
             var link = document.createElement('a');
             link.className = 'dream-search-result';
             link.href = item.url || '#';
+            if (item.command) link.dataset.searchCommand = '1';
             link.setAttribute('role', 'option');
             link.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
-            link.innerHTML = '<span class="dream-search-result-title"></span><span class="dream-search-result-action" aria-label="回车"><span class="dream-search-enter-symbol" aria-hidden="true"></span></span>';
+            link.innerHTML = '<span class="dream-search-result-copy"><span class="dream-search-result-title"></span><small class="dream-search-result-detail"></small></span><span class="dream-search-result-action" aria-label="回车"><span class="dream-search-enter-symbol" aria-hidden="true"></span></span>';
             link.querySelector('.dream-search-result-title').textContent = item.title || '';
+            var detail = link.querySelector('.dream-search-result-detail');
+            detail.textContent = item.detail || '';
+            detail.hidden = !item.detail;
             results.appendChild(link);
         });
         results.hidden = false;
@@ -984,6 +1023,12 @@
     $(document).on('input', '.dream-search-overlay .search-field', function () {
         var query = this.value.trim();
         clearTimeout(searchTimer);
+        var command = resolveSearchCommand(query);
+        if (command) {
+            command.command = true;
+            renderSearchResults([command]);
+            return;
+        }
         if (query.length < 2) {
             renderSearchResults([]);
             return;
@@ -1014,9 +1059,13 @@
         } else if (event.key === 'Enter') {
             event.preventDefault();
             if (searchActiveIndex >= 0 && items[searchActiveIndex]) {
-                window.location.href = items[searchActiveIndex].href;
+                if (!items[searchActiveIndex].dataset.searchCommand) window.location.href = items[searchActiveIndex].href;
             }
         }
+    });
+
+    $(document).on('click', '.dream-search-result[data-search-command]', function (event) {
+        event.preventDefault();
     });
 
     $(document).on('mouseenter focus', '.dream-search-result', function () {
@@ -1031,6 +1080,73 @@
             $('.dream-search-overlay').prop('hidden', true);
         }
     });
+
+    function initializeLogoEasterEgg() {
+        if (!Dream2WP.logoEasterEggEnabled) return;
+        var logo = document.querySelector('.navbar .logo-title');
+        if (!logo || logo.dataset.dreamLogoReady === '1') return;
+        logo.dataset.dreamLogoReady = '1';
+        var clicks = 0;
+        var clickTimer = 0;
+        var pressTimer = 0;
+        var triggered = false;
+
+        function reveal(method) {
+            if (triggered) return;
+            triggered = true;
+            clicks = 0;
+            window.clearTimeout(clickTimer);
+            window.clearTimeout(pressTimer);
+            document.documentElement.classList.add('dream-logo-node-active');
+            var save = readVisitorSave();
+            var achievementWillShow = !!(Dream2WP.visitorAchievementsEnabled && save && !(save.hiddenNodes || {}).logo);
+            var notice = null;
+            if (!achievementWillShow) {
+                notice = document.createElement('div');
+                notice.className = 'dream-logo-node-notice';
+                notice.setAttribute('role', 'status');
+                notice.innerHTML = '<span>HIDDEN NODE</span><strong>入口之外</strong><small>' + (method === 'hold' ? '长按协议已响应' : '连续输入已识别') + '</small>';
+                document.body.appendChild(notice);
+            }
+            document.dispatchEvent(new CustomEvent('dream2:discover-node', { detail: { node: 'logo' } }));
+            if (notice) window.setTimeout(function () { notice.classList.add('is-visible'); }, 20);
+            window.setTimeout(function () {
+                if (notice) notice.classList.remove('is-visible');
+                document.documentElement.classList.remove('dream-logo-node-active');
+                window.setTimeout(function () {
+                    if (notice) notice.remove();
+                    triggered = false;
+                }, 250);
+            }, 2800);
+        }
+
+        logo.addEventListener('pointerdown', function (event) {
+            if (event.button !== 0) return;
+            window.clearTimeout(pressTimer);
+            pressTimer = window.setTimeout(function () { reveal('hold'); }, 900);
+        });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (type) {
+            logo.addEventListener(type, function () { window.clearTimeout(pressTimer); });
+        });
+        logo.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (triggered) {
+                return;
+            }
+            clicks += 1;
+            if (clicks >= 5) {
+                reveal('click');
+                return;
+            }
+            window.clearTimeout(clickTimer);
+            clickTimer = window.setTimeout(function () {
+                clicks = 0;
+                window.location.href = logo.href;
+            }, 650);
+        });
+    }
+
+    initializeLogoEasterEgg();
 
     $(document).on('click', '.click-close', function () {
         $(this).closest('.tips').slideUp(180);

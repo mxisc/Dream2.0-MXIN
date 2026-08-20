@@ -13,6 +13,7 @@ const DREAM2_MXIN_LINK_APPLICATION_META = 'dream2_link_application';
 const DREAM2_MXIN_LINK_APPLICATION_BACKLINK_META = 'dream2_link_application_backlink_url';
 const DREAM2_MXIN_LINK_APPLICATION_MATCHED_META = 'dream2_link_application_matched_url';
 const DREAM2_MXIN_LINK_APPLICATION_AVATAR_META = 'dream2_link_application_avatar_url';
+const DREAM2_MXIN_LINK_APPLICATION_LINK_ID_META = 'dream2_link_application_link_id';
 
 function dream2_mxin_is_link_application_post($post_id) {
     return $post_id && 'page-templates/links.php' === get_page_template_slug($post_id);
@@ -42,11 +43,9 @@ function dream2_mxin_link_application_clean_url($value, $required = true) {
 function dream2_mxin_link_application_status_message($status) {
     $messages = array(
         'success'              => array('type' => 'success', 'text' => '友链申请投递成功，传送门已经开好啦。'),
-        'pending'              => array('type' => 'success', 'text' => '申请已进入审核队列，等我看一眼就会上墙。'),
         'missing'              => array('type' => 'error', 'text' => '情报还没填满哦，名称、地址、邮箱和反链页都要给我。'),
         'invalid_nonce'        => array('type' => 'error', 'text' => '这个提交令牌过期啦，刷新页面再来一局。'),
         'closed'               => array('type' => 'error', 'text' => '当前友链申请通道还没开放，先等等。'),
-        'invalid_url'          => array('type' => 'error', 'text' => '链接格式有点怪，检查一下再提交吧。'),
         'invalid_site_url'     => array('type' => 'error', 'text' => '你的网站地址不像能访问的传送门，换个完整地址试试。'),
         'invalid_backlink_url' => array('type' => 'error', 'text' => '反链检测页进不去副本，换个可访问的完整地址吧。'),
         'backlink_host_mismatch' => array('type' => 'error', 'text' => '反链页看起来不是你家地盘，先去评论区手动丢申请吧。'),
@@ -55,13 +54,82 @@ function dream2_mxin_link_application_status_message($status) {
         'backlink_unreachable' => array('type' => 'error', 'text' => '反链页暂时进不去，确认能访问后再来。'),
         'backlink_missing'     => array('type' => 'error', 'text' => '反链页找到了，但没看到本站链接。先把传送门放上去吧。'),
         'registered_email'     => array('type' => 'error', 'text' => '这个邮箱已经绑定站内账号啦，先登录再操作。'),
-        'duplicate'            => array('type' => 'error', 'text' => '这份申请好像已经投递过了，别重复刷任务。'),
-        'flood'                => array('type' => 'error', 'text' => '手速太快啦，冷却一下再提交。'),
         'rate_limited'         => array('type' => 'error', 'text' => '检测请求太频繁，十分钟后再来一局。'),
         'bot'                  => array('type' => 'error', 'text' => '这次提交没有通过校验，请刷新页面重试。'),
         'failed'               => array('type' => 'error', 'text' => '申请投递失败，系统卡了一下，稍后再试。'),
     );
     return $messages[$status] ?? array();
+}
+
+function dream2_mxin_link_application_friend_category_id() {
+    $category_id = absint(dream2_get('link_friend_category', dream2_mxin_default_link_category_id('友情链接')));
+    $term = $category_id ? get_term($category_id, 'link_category') : null;
+    if ($term && !is_wp_error($term)) {
+        return $category_id;
+    }
+    return absint(dream2_mxin_default_link_category_id('友情链接'));
+}
+
+function dream2_mxin_link_application_existing_link_id($site_url) {
+    global $wpdb;
+    $site_url = esc_url_raw($site_url);
+    $without_slash = untrailingslashit($site_url);
+    $with_slash = trailingslashit($without_slash);
+    return (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT link_id FROM {$wpdb->links} WHERE link_url IN (%s, %s, %s) ORDER BY link_id ASC LIMIT 1",
+        $site_url,
+        $without_slash,
+        $with_slash
+    ));
+}
+
+function dream2_mxin_link_application_upsert_link($site_name, $site_url, $avatar_url, $email, $backlink_url, $matched_url, $description, $status_code) {
+    if (!function_exists('wp_insert_link')) {
+        require_once ABSPATH . 'wp-admin/includes/bookmark.php';
+    }
+
+    $checked_at = current_time('mysql');
+    $verification = array(
+        'access'             => 'success',
+        'backlink'           => 'success',
+        'status'             => 'success',
+        'message'            => '站点正常，已找到反链',
+        'checked_at'         => $checked_at,
+        'matched_url'        => $matched_url,
+        'status_code'        => absint($status_code),
+        'consecutive_failures' => 0,
+        'first_failed_at'    => '',
+        'last_success_at'    => $checked_at,
+        'confirmed_failure'  => false,
+        'moved_at'           => '',
+        'access_failures'    => 0,
+        'access_first_failed_at' => '',
+        'backlink_failures'  => 0,
+        'backlink_first_failed_at' => '',
+        'one_way_notified_at' => '',
+        'abnormal_notified_at' => '',
+        'lost_notified_at'   => '',
+    );
+    $link_id = dream2_mxin_link_application_existing_link_id($site_url);
+    $linkdata = array(
+        'link_name'        => $site_name,
+        'link_url'         => $site_url,
+        'link_description' => $description,
+        'link_image'       => $avatar_url,
+        'link_target'      => '_blank',
+        'link_visible'     => 'Y',
+        'link_notes'       => dream2_mxin_link_notes($email, $backlink_url, $verification),
+    );
+    $category_id = dream2_mxin_link_application_friend_category_id();
+    if ($category_id) {
+        $linkdata['link_category'] = array($category_id);
+    }
+
+    if ($link_id) {
+        $linkdata['link_id'] = $link_id;
+        return wp_update_link($linkdata);
+    }
+    return wp_insert_link($linkdata, true);
 }
 
 function dream2_mxin_link_application_url_host($url) {
@@ -125,7 +193,6 @@ function dream2_mxin_link_application_redirect($post_id, $status, $comment_id = 
             $comment = get_comment($comment_id);
             $data['comment_id'] = (int) $comment_id;
             $data['approved'] = $comment && (string) $comment->comment_approved === '1';
-            $data['comment_url'] = get_comment_link($comment_id);
             $data['refresh_url'] = get_permalink($post_id);
         }
         if ($message['type'] === 'success') {
@@ -151,23 +218,6 @@ function dream2_mxin_link_application_redirect($post_id, $status, $comment_id = 
     }
     wp_safe_redirect($redirect . ($comment_id ? '#comment-' . (int) $comment_id : '#dream2-link-application'), 303);
     exit;
-}
-
-function dream2_mxin_link_application_error_from_wp($error) {
-    if (!is_wp_error($error)) {
-        return 'failed';
-    }
-    $code = $error->get_error_code();
-    if ($code === 'dream2_registered_comment_email') {
-        return 'registered_email';
-    }
-    if ($code === 'comment_duplicate') {
-        return 'duplicate';
-    }
-    if ($code === 'comment_flood') {
-        return 'flood';
-    }
-    return 'failed';
 }
 
 function dream2_mxin_link_application_rate_limit($scope, $value, $limit, $ttl = 600) {
@@ -250,6 +300,20 @@ function dream2_mxin_handle_link_application() {
         dream2_mxin_link_application_redirect($post_id, 'backlink_missing');
     }
 
+    $link_id = dream2_mxin_link_application_upsert_link(
+        $site_name,
+        $site_url,
+        $avatar_url,
+        $email,
+        $backlink_url,
+        $matched_url,
+        $description,
+        $backlink['code']
+    );
+    if (is_wp_error($link_id) || !$link_id) {
+        dream2_mxin_link_application_redirect($post_id, 'failed');
+    }
+
     $content = dream2_mxin_link_application_comment_content($site_name, $site_url, $avatar_url, $description);
     $comment_id = wp_new_comment(wp_slash(array(
         'comment_post_ID'      => $post_id,
@@ -263,12 +327,13 @@ function dream2_mxin_handle_link_application() {
     )), true);
 
     if (is_wp_error($comment_id)) {
-        dream2_mxin_link_application_redirect($post_id, dream2_mxin_link_application_error_from_wp($comment_id));
+        dream2_mxin_link_application_redirect($post_id, 'success');
     }
 
     update_comment_meta($comment_id, DREAM2_MXIN_LINK_APPLICATION_META, '1');
     update_comment_meta($comment_id, DREAM2_MXIN_LINK_APPLICATION_BACKLINK_META, $backlink_url);
     update_comment_meta($comment_id, DREAM2_MXIN_LINK_APPLICATION_MATCHED_META, $matched_url);
+    update_comment_meta($comment_id, DREAM2_MXIN_LINK_APPLICATION_LINK_ID_META, (int) $link_id);
     if ($avatar_url !== '') {
         update_comment_meta($comment_id, DREAM2_MXIN_LINK_APPLICATION_AVATAR_META, $avatar_url);
     }
@@ -276,9 +341,7 @@ function dream2_mxin_handle_link_application() {
         dream2_mxin_set_commenter_cookies($comment_id);
     }
 
-    $comment = get_comment($comment_id);
-    $status = $comment && (string) $comment->comment_approved === '1' ? 'success' : 'pending';
-    dream2_mxin_link_application_redirect($post_id, $status, $comment_id);
+    dream2_mxin_link_application_redirect($post_id, 'success', $comment_id);
 }
 add_action('admin_post_dream2_submit_link_application', 'dream2_mxin_handle_link_application');
 add_action('admin_post_nopriv_dream2_submit_link_application', 'dream2_mxin_handle_link_application');

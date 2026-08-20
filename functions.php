@@ -11,7 +11,11 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DREAM2_MXIN_VERSION', '0.7.47');
+define('DREAM2_MXIN_VERSION', '0.7.48');
+
+function dream2_mxin_enhancer_active($feature = '') {
+    return (bool) apply_filters('dream2_mxin_enhancer_feature_active', defined('DREAM2_MXIN_ENHANCER_VERSION'), $feature);
+}
 
 // Keep the public layout identical for signed-in and signed-out visitors.
 add_filter('show_admin_bar', '__return_false');
@@ -472,9 +476,22 @@ function dream2_mxin_enqueue_assets() {
         'enableToutiaoPush' => !$lightweight_widget_context && dream2_enabled('enable_toutiao_push'),
         'ajaxUrl'            => admin_url('admin-ajax.php'),
         'searchRestUrl'      => rest_url('wp/v2/search'),
+        'searchCommandsEnabled' => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_search_commands'),
+        'logoEasterEggEnabled' => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_logo_easter_egg'),
+        'randomTeleportEnabled' => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_random_teleport'),
+        'enhancerActive'        => dream2_mxin_enhancer_active(),
+        'currentPostId'         => is_singular() ? get_queried_object_id() : 0,
         'defaultAvatar'      => dream2_mxin_default_avatar_url(),
         'searchUrl'     => home_url('/'),
         'backToTopText' => __('返回顶部', 'dream2-mxin'),
+        'visitorLevelEnabled' => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_visitor_level'),
+        'visitorLevelNotice'  => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_visitor_level_notice'),
+        'visitorAchievementsEnabled' => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_visitor_achievements'),
+        'visitorAchievementNotice'   => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_visitor_achievement_notice'),
+        'visitorSaveEndpoint'        => admin_url('admin-ajax.php?action=dream2_visitor_save'),
+        'visitorSaveNonce'           => wp_create_nonce('dream2_visitor_event'),
+        'visitorSaveCanReset'        => current_user_can('manage_options'),
+        'visitorSaveResetNonce'      => current_user_can('manage_options') ? wp_create_nonce('dream2_visitor_save_delete') : '',
     ));
 }
 add_action('wp_enqueue_scripts', 'dream2_mxin_enqueue_assets');
