@@ -430,6 +430,41 @@ function dream2_mxin_music_mode_choices() {
     return array('none' => '关闭', 'playlist' => '网易云歌单', 'config' => '自定义配置');
 }
 
+function dream2_mxin_meting_api_source_choices() {
+    return array(
+        'i_meto'  => 'i-Meto 公共 API',
+        'qijieya' => '祈杰 API',
+        'custom'  => '自定义 API',
+    );
+}
+
+function dream2_mxin_meting_api_source($module) {
+    $source = (string) dream2_mxin_widget_module_value($module, 'meting_api_source', '');
+    if (array_key_exists($source, dream2_mxin_meting_api_source_choices())) {
+        return $source;
+    }
+
+    $api = (string) dream2_mxin_widget_module_value($module, 'meting_api', '');
+    if (str_contains($api, 'api.qijieya.cn/meting/')) {
+        return 'qijieya';
+    }
+    if ($api !== '' && !str_contains($api, 'api.i-meto.com/meting/api')) {
+        return 'custom';
+    }
+    return 'i_meto';
+}
+
+function dream2_mxin_meting_api_url($module) {
+    $source = dream2_mxin_meting_api_source($module);
+    if ($source === 'qijieya') {
+        return 'https://api.qijieya.cn/meting/?server=:server&type=:type&id=:id';
+    }
+    if ($source === 'custom') {
+        return (string) dream2_mxin_widget_module_value($module, 'meting_api', '');
+    }
+    return 'https://api.i-meto.com/meting/api?server=:server&type=:type&id=:id&r=:r';
+}
+
 function dream2_mxin_ad_mode_choices() {
     return array('none' => '关闭', 'image' => '图片', 'custom' => '自定义代码');
 }
@@ -754,6 +789,10 @@ abstract class Dream2_MXIN_Sidebar_Widget extends WP_Widget {
                 ? (string) $new_instance['music_mode']
                 : 'none';
             $instance['netease_playlist_id'] = sanitize_text_field($new_instance['netease_playlist_id'] ?? '');
+            $api_sources = dream2_mxin_meting_api_source_choices();
+            $instance['meting_api_source'] = array_key_exists((string) ($new_instance['meting_api_source'] ?? ''), $api_sources)
+                ? (string) $new_instance['meting_api_source']
+                : 'i_meto';
             $instance['meting_api'] = esc_url_raw($new_instance['meting_api'] ?? '');
             $instance['music_config'] = current_user_can('unfiltered_html')
                 ? (string) ($new_instance['music_config'] ?? '')
@@ -1069,7 +1108,8 @@ abstract class Dream2_MXIN_Sidebar_Widget extends WP_Widget {
         } elseif ($this->module_type === 'music') {
             $this->select_field('music_mode', '音乐播放器配置方式', $this->field_value($instance, 'music_mode', 'none'), dream2_mxin_music_mode_choices());
             $this->text_field('netease_playlist_id', '网易云歌单 ID', $this->field_value($instance, 'netease_playlist_id', ''));
-            $this->text_field('meting_api', '自建 Meting API', $this->field_value($instance, 'meting_api', ''), 'url');
+            $this->select_field('meting_api_source', 'Meting API 来源', dream2_mxin_meting_api_source($instance), dream2_mxin_meting_api_source_choices());
+            $this->text_field('meting_api', '自定义 Meting API', $this->field_value($instance, 'meting_api', ''), 'url');
             $this->textarea_field('music_config', '音乐参数进阶配置', $this->field_value($instance, 'music_config', ''), 5);
         } elseif ($this->module_type === 'ad_piece') {
             $this->select_field('ad_mode', '广告展示方法', $this->field_value($instance, 'ad_mode', 'none'), dream2_mxin_ad_mode_choices());

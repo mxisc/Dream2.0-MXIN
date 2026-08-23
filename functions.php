@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DREAM2_MXIN_VERSION', '0.7.48');
+define('DREAM2_MXIN_VERSION', '0.7.49');
 
 function dream2_mxin_enhancer_active($feature = '') {
     return (bool) apply_filters('dream2_mxin_enhancer_feature_active', defined('DREAM2_MXIN_ENHANCER_VERSION'), $feature);
@@ -464,7 +464,7 @@ function dream2_mxin_enqueue_assets() {
         'showImageName' => dream2_enabled('show_img_name'),
         'enableKatex'   => $singular_has_katex,
         'enableShare'   => dream2_enabled('enable_post_share'),
-        'metingApi'     => dream2_mxin_widget_module_value($music_widget, 'meting_api', dream2_get('meting_api', '')),
+        'metingApi'     => dream2_mxin_meting_api_url($music_widget),
         'enablePjax'    => dream2_enabled('enable_pjax'),
         'enableServiceWorker' => dream2_enabled('enable_sw'),
         'serviceWorkerUrl' => add_query_arg('dream2_sw', '1', home_url('/')),
