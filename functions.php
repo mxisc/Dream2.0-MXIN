@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DREAM2_MXIN_VERSION', '0.7.49');
+define('DREAM2_MXIN_VERSION', '0.7.50');
 
 function dream2_mxin_enhancer_active($feature = '') {
     return (bool) apply_filters('dream2_mxin_enhancer_feature_active', defined('DREAM2_MXIN_ENHANCER_VERSION'), $feature);
@@ -35,6 +35,7 @@ require_once get_template_directory() . '/inc/sidebar-widgets.php';
 require_once get_template_directory() . '/inc/comment-emojis.php';
 require_once get_template_directory() . '/inc/private-comments.php';
 require_once get_template_directory() . '/inc/link-application.php';
+require_once get_template_directory() . '/inc/avatar-privacy.php';
 require_once get_template_directory() . '/inc/template-tags.php';
 
 function dream2_mxin_setup() {
@@ -482,6 +483,8 @@ function dream2_mxin_enqueue_assets() {
         'enhancerActive'        => dream2_mxin_enhancer_active(),
         'currentPostId'         => is_singular() ? get_queried_object_id() : 0,
         'defaultAvatar'      => dream2_mxin_default_avatar_url(),
+        'avatarCacheEndpoint' => admin_url('admin-ajax.php?action=dream2_mxin_avatar_cache'),
+        'avatarCacheNonce'    => wp_create_nonce('dream2_mxin_avatar_cache'),
         'searchUrl'     => home_url('/'),
         'backToTopText' => __('返回顶部', 'dream2-mxin'),
         'visitorLevelEnabled' => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_visitor_level'),
@@ -527,6 +530,7 @@ function dream2_mxin_inline_theme_css() {
     <style id="dream2-custom-properties">
         html{--theme:<?php echo esc_html($light); ?>}
         html.night{--theme:<?php echo esc_html($night); ?>}
+        html:not(.night) .navbar-above,
         .section .card{background-color:rgba(255,255,255,<?php echo esc_html($card_alpha); ?>)}
         html.night .section .card{background-color:rgba(40,44,52,<?php echo esc_html($card_alpha); ?>)}
         html .section .card:hover{background-color:rgba(255,255,255,<?php echo esc_html($card_hover_alpha); ?>)}

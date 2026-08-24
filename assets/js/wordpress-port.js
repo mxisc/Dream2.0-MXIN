@@ -1,8 +1,18 @@
 (function ($) {
     'use strict';
 
+    var runtimeThemeBase = Dream2WP.themeBase;
+    var portScript = document.currentScript;
+    if (portScript && portScript.src) {
+        var portScriptMarker = '/assets/js/wordpress-port.js';
+        var portScriptMarkerIndex = portScript.src.indexOf(portScriptMarker);
+        if (portScriptMarkerIndex !== -1) {
+            runtimeThemeBase = portScript.src.slice(0, portScriptMarkerIndex + 1);
+        }
+    }
+
     window.DreamConfig = window.DreamConfig || {};
-    window.DreamConfig.theme_base = Dream2WP.themeBase + 'assets/';
+    window.DreamConfig.theme_base = runtimeThemeBase + 'assets/';
     window.DreamConfig.theme_version = Dream2WP.themeVersion;
     window.DreamConfig.default_theme = Dream2WP.defaultTheme;
     window.DreamConfig.document_hidden_title = Dream2WP.hiddenTitle || '';
@@ -91,7 +101,7 @@
             if (path.indexOf('/granule.min.js') !== -1) {
                 window.$ = window.jQuery;
             }
-            script.src = Dream2WP.themeBase + path + '?ver=' + encodeURIComponent(Dream2WP.themeVersion);
+            script.src = runtimeThemeBase + path + '?ver=' + encodeURIComponent(Dream2WP.themeVersion);
             script.async = true;
             document.body.appendChild(script);
         });
@@ -123,7 +133,7 @@
         if (!image || (!image.dataset.dreamAvatarFallbacks && !image.dataset.dreamAvatarFallback)) return;
         if (image.dataset.avatarFallbackTimer) window.clearTimeout(Number(image.dataset.avatarFallbackTimer));
         image.dataset.avatarFallbackTimer = String(window.setTimeout(function () {
-            if (!image.complete || image.naturalWidth === 0) replaceBrokenAvatar(image);
+            if (image.complete && image.naturalWidth === 0) replaceBrokenAvatar(image);
         }, 5000));
     }
     document.addEventListener('error', function (event) { replaceBrokenAvatar(event.target); }, true);
@@ -149,6 +159,50 @@
     initializeSafeAvatars(document);
     window.addEventListener('load', function () { initializeSafeAvatars(document); });
     document.addEventListener('dream2:page-loaded', function () { initializeSafeAvatars(document); });
+
+    function requestPrivateAvatarBatch(images) {
+        var form = new window.FormData();
+        form.append('nonce', Dream2WP.avatarCacheNonce || '');
+        images.forEach(function (image) {
+            form.append('tokens[]', image.dataset.dreamAvatarToken);
+            image.dataset.avatarCacheLoading = '1';
+        });
+
+        window.fetch(Dream2WP.avatarCacheEndpoint, {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: form
+        }).then(function (response) {
+            if (!response.ok) throw new Error('avatar cache request failed');
+            return response.json();
+        }).then(function (payload) {
+            var avatars = payload && payload.success && payload.data && payload.data.avatars || {};
+            images.forEach(function (image) {
+                var token = image.dataset.dreamAvatarToken;
+                if (avatars[token]) image.src = avatars[token];
+                image.removeAttribute('data-dream-avatar-token');
+                image.removeAttribute('data-avatar-cache-loading');
+            });
+        }).catch(function () {
+            images.forEach(function (image) {
+                image.removeAttribute('data-avatar-cache-loading');
+                var retries = parseInt(image.dataset.avatarCacheRetries || '0', 10);
+                if (retries < 1) {
+                    image.dataset.avatarCacheRetries = String(retries + 1);
+                    window.setTimeout(function () { initializePrivateAvatarCache(image.parentNode || document); }, 3000);
+                }
+            });
+        });
+    }
+
+    function initializePrivateAvatarCache(root) {
+        if (!Dream2WP.avatarCacheEndpoint || !Dream2WP.avatarCacheNonce) return;
+        var images = Array.from((root || document).querySelectorAll('img[data-dream-avatar-token]:not([data-avatar-cache-loading])')).slice(0, 8);
+        if (images.length) requestPrivateAvatarBatch(images);
+    }
+    initializePrivateAvatarCache(document);
+    window.addEventListener('load', function () { initializePrivateAvatarCache(document); });
+    document.addEventListener('dream2:page-loaded', function () { initializePrivateAvatarCache(document); });
 
     function syncCommentEditor(editor) {
         var textarea = editor.closest('.dream-comment-editor').querySelector('.dream-comment-source');

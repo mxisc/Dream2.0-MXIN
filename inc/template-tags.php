@@ -298,6 +298,9 @@ function dream2_mxin_qq_avatar_url($email) {
 }
 
 function dream2_mxin_default_avatar_url() {
+    if (function_exists('dream2_mxin_avatar_privacy_enabled') && dream2_mxin_avatar_privacy_enabled()) {
+        return esc_url_raw(dream2_mxin_avatar_default_url());
+    }
     return esc_url_raw(dream2_get('links_default_avatar', dream2_mxin_asset('img/avatar.svg')) ?: dream2_mxin_asset('img/avatar.svg'));
 }
 
@@ -367,12 +370,16 @@ function dream2_mxin_avatar_email_and_user($id_or_email) {
     return array($email, $user_id);
 }
 
-function dream2_mxin_avatar_url($id_or_email, $size = 48) {
+function dream2_mxin_avatar_url($id_or_email, $size = 48, &$pending_token = '') {
+    $pending_token = '';
     list($email, $user_id) = dream2_mxin_avatar_email_and_user($id_or_email);
 
     if ($user_id) {
         $user_avatar_url = get_user_meta($user_id, 'user_avatar', true);
         if ($user_avatar_url) {
+            if (dream2_mxin_avatar_privacy_enabled()) {
+                return dream2_mxin_avatar_privacy_url('user', $user_id . '|' . $user_avatar_url, $user_avatar_url, $pending_token);
+            }
             return esc_url_raw($user_avatar_url);
         }
     }
@@ -383,13 +390,24 @@ function dream2_mxin_avatar_url($id_or_email, $size = 48) {
 
     $qq_avatar_url = dream2_mxin_qq_avatar_url($email);
     if ($qq_avatar_url !== '') {
+        if (dream2_mxin_avatar_privacy_enabled()) {
+            return dream2_mxin_avatar_privacy_url('comment', trim(strtolower((string) $email)) . '|' . $qq_avatar_url, $qq_avatar_url, $pending_token);
+        }
         return $qq_avatar_url;
     }
 
-    return dream2_mxin_gravatar_url($email, 'secure.gravatar.com/avatar');
+    $gravatar_url = dream2_mxin_gravatar_url($email, 'secure.gravatar.com/avatar');
+    if (dream2_mxin_avatar_privacy_enabled()) {
+        return dream2_mxin_avatar_privacy_url('comment', trim(strtolower((string) $email)) . '|' . $gravatar_url, $gravatar_url, $pending_token);
+    }
+    return $gravatar_url;
 }
 
 function dream2_mxin_avatar_fallback_urls($id_or_email, $size = 48) {
+    if (dream2_mxin_avatar_privacy_enabled()) {
+        return array(dream2_mxin_default_avatar_url());
+    }
+
     list($email, $user_id) = dream2_mxin_avatar_email_and_user($id_or_email);
     $fallbacks = array();
 
@@ -427,7 +445,8 @@ function dream2_mxin_friend_site_urls_match($comment_url, $link_url) {
     return $comment && $link && $comment === $link;
 }
 
-function dream2_mxin_comment_friend_avatar_url($id_or_email) {
+function dream2_mxin_comment_friend_avatar_url($id_or_email, &$pending_token = '') {
+    $pending_token = '';
     if (!is_object($id_or_email) || empty($id_or_email->comment_author_url)) {
         return '';
     }
@@ -457,22 +476,42 @@ function dream2_mxin_comment_friend_avatar_url($id_or_email) {
             }
             $host = dream2_mxin_normalize_friend_site_url($bookmark->link_url);
             if ($host && !isset($friend_avatars[$host])) {
-                $friend_avatars[$host] = esc_url_raw($bookmark->link_image);
+                $friend_avatars[$host] = array(
+                    'id'  => (string) $bookmark->link_id,
+                    'url' => esc_url_raw($bookmark->link_image),
+                );
             }
         }
     }
-    return $friend_avatars[$comment_host] ?? '';
+    $friend_avatar = $friend_avatars[$comment_host] ?? array();
+    if (!$friend_avatar) {
+        return '';
+    }
+    if (dream2_mxin_avatar_privacy_enabled()) {
+        return dream2_mxin_avatar_privacy_url('friend', $friend_avatar['id'] . '|' . $friend_avatar['url'], $friend_avatar['url'], $pending_token);
+    }
+    return $friend_avatar['url'];
 }
 
 function dream2_mxin_loli_avatar($avatar, $id_or_email, $size = 96, $default = '', $alt = '', $args = array()) {
-    $url = dream2_mxin_avatar_url($id_or_email, $size);
-    $friend_avatar_url = dream2_mxin_comment_friend_avatar_url($id_or_email);
-    $display_url = $friend_avatar_url ?: $url;
+    $pending_token = '';
+    $friend_avatar_url = dream2_mxin_comment_friend_avatar_url($id_or_email, $pending_token);
     $fallback_urls = array();
-    if ($friend_avatar_url && $url !== $friend_avatar_url) {
-        $fallback_urls[] = $url;
+    if ($friend_avatar_url && dream2_mxin_avatar_privacy_enabled()) {
+        $display_url = $friend_avatar_url;
+        $fallback_urls[] = dream2_mxin_default_avatar_url();
+    } else {
+        $url_token = '';
+        $url = dream2_mxin_avatar_url($id_or_email, $size, $url_token);
+        $display_url = $friend_avatar_url ?: $url;
+        if (!$friend_avatar_url) {
+            $pending_token = $url_token;
+        }
+        if ($friend_avatar_url && $url !== $friend_avatar_url) {
+            $fallback_urls[] = $url;
+        }
+        $fallback_urls = array_merge($fallback_urls, dream2_mxin_avatar_fallback_urls($id_or_email, $size));
     }
-    $fallback_urls = array_merge($fallback_urls, dream2_mxin_avatar_fallback_urls($id_or_email, $size));
     $fallback_urls = array_values(array_filter(array_unique(array_diff($fallback_urls, array($display_url)))));
     $classes = array('avatar', 'avatar-' . (int) $size, 'photo');
     if (!empty($args['class'])) {
@@ -481,12 +520,13 @@ function dream2_mxin_loli_avatar($avatar, $id_or_email, $size = 96, $default = '
     $classes = array_values(array_unique($classes));
 
     return sprintf(
-        '<img src="%1$s" class="%2$s" alt="%3$s" width="%4$d" height="%4$d"%5$s loading="lazy" decoding="async">',
+        '<img src="%1$s" class="%2$s" alt="%3$s" width="%4$d" height="%4$d"%5$s%6$s loading="lazy" decoding="async">',
         esc_url($display_url),
         esc_attr(implode(' ', $classes)),
         esc_attr($alt),
         (int) $size,
-        $fallback_urls ? ' data-dream-avatar-fallbacks="' . esc_attr(implode('|', $fallback_urls)) . '"' : ''
+        $fallback_urls ? ' data-dream-avatar-fallbacks="' . esc_attr(implode('|', $fallback_urls)) . '"' : '',
+        $pending_token ? ' data-dream-avatar-token="' . esc_attr($pending_token) . '"' : ''
     );
 }
 add_filter('get_avatar', 'dream2_mxin_loli_avatar', 10, 6);

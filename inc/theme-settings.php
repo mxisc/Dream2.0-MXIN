@@ -44,7 +44,7 @@ function dream2_mxin_settings_subgroups() {
             array('label' => '朋友圈页面', 'fields' => array('enable_friends_stats')),
         ),
         'communication' => array(
-            array('label' => '私密评论', 'fields' => array('enable_private_comment')),
+            array('label' => '评论设置', 'fields' => array('enable_private_comment', 'avatar_privacy')),
             array('label' => '评论表情', 'fields' => array('comment_emoji_groups')),
             array('label' => 'SMTP 发信', 'fields' => array('enable_smtp', 'smtp_host', 'smtp_port', 'smtp_secure', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name')),
             array('label' => '邮件通知', 'fields' => array('email_notify_post_author', 'email_notify_moderator', 'email_notify_reply', 'link_notify_recovered', 'link_notify_one_way', 'link_notify_abnormal', 'link_notify_lost')),
@@ -935,6 +935,18 @@ function dream2_mxin_store_link_verification(
         clean_bookmark_cache((int) $bookmark->link_id);
     };
     $save_notes();
+    if (
+        $verification['access'] === 'success'
+        && !empty($bookmark->link_image)
+        && function_exists('dream2_mxin_avatar_privacy_enabled')
+        && dream2_mxin_avatar_privacy_enabled()
+    ) {
+        dream2_mxin_avatar_cache_schedule(
+            'friend',
+            $bookmark->link_id . '|' . $bookmark->link_image,
+            $bookmark->link_image
+        );
+    }
     if ($move_to_id) {
         $moved = wp_set_object_terms((int) $bookmark->link_id, array($move_to_id), 'link_category', false);
         if (!is_wp_error($moved)) {
@@ -1325,12 +1337,12 @@ function dream2_mxin_settings_registry() {
         'appearance' => 'theme_style|主题风格,default_theme|默认主题模式,theme_color|明亮模式主题色,night_theme_color|黑暗模式主题色,font_preset|博客字体,web_font|自定义字体 CSS 链接,custom_font|自定义字体名称,night_logo|黑暗模式 Logo,enable_image_bg|开启博客背景图,card_opacity|卡片透明度,background_image_opacity|背景图透明度,background_pc|明亮模式 PC 背景图,background_mobile|明亮模式移动端背景图,night_background_pc|黑暗模式 PC 背景图,night_background_mobile|黑暗模式移动端背景图,cursor_style|鼠标风格,cursor_move|鼠标移动特效,cursor_click|鼠标点击特效,effects_lantern_mode|灯笼特效,effects_sakura_mode|樱花特效,effects_snowflake_mode|雪花特效,effects_universe_mode|宇宙星空特效,effects_circle_magic_mode|上升圆点特效,enable_gray_mode|灰色模式',
         'home_layout' => 'index_inform|首页通知,enable_banner|开启博客横幅大图,banner_image|横幅背景图,banner_description|横幅文字描述,sidebar_column|博客布局方式,carousel_options|首页大图轮播选项,module_options|模块化布局选项,left_sidebar_sticky|左侧边栏悬浮,right_sidebar_sticky|右侧边栏悬浮',
         'content_page' => 'default_thumbnail|默认文章封面图,top_thumbnail_mode|置顶文章封面模式,thumbnail_mode|文章列表封面模式,drawer_toc|侧边抽屉式目录,code_pretty|代码块高亮主题,code_fold_line|代码块折叠行数（0-500）,img_fold_height|正文长图折叠高度（0-3000px）,show_img_name|显示图片名称,invalid_tips_day|文章失效提示天数,enable_katex|KaTeX 公式支持,enable_copyright|开启文章版权声明,enable_post_share|开启文章分享,enable_archivers_route|启用文章归档页,archivers_route_slug|文章归档路径,enable_friends_stats|朋友圈统计信息',
-        'communication' => 'enable_private_comment|允许私密评论,comment_emoji_groups|评论表情分组,enable_smtp|启用 SMTP,smtp_host|SMTP 主机,smtp_port|SMTP 端口,smtp_secure|加密方式,smtp_username|SMTP 账号,smtp_password|SMTP 密码,smtp_from_email|发件邮箱,smtp_from_name|发件名称,email_notify_post_author|新评论提醒,email_notify_moderator|待审核评论提醒,email_notify_reply|回评提醒,link_notify_recovered|友链博客恢复提醒,link_notify_one_way|友链博客单向提醒,link_notify_abnormal|友链博客异常提醒,link_notify_lost|友链博客失联提醒',
+        'communication' => 'enable_private_comment|允许私密评论,avatar_privacy|头像隐私保护,comment_emoji_groups|评论表情分组,enable_smtp|启用 SMTP,smtp_host|SMTP 主机,smtp_port|SMTP 端口,smtp_secure|加密方式,smtp_username|SMTP 账号,smtp_password|SMTP 密码,smtp_from_email|发件邮箱,smtp_from_name|发件名称,email_notify_post_author|新评论提醒,email_notify_moderator|待审核评论提醒,email_notify_reply|回评提醒,link_notify_recovered|友链博客恢复提醒,link_notify_one_way|友链博客单向提醒,link_notify_abnormal|友链博客异常提醒,link_notify_lost|友链博客失联提醒',
         'link' => 'link_takeover_categories|梦屿接管友链分类,link_friend_category|友情链接分类,link_one_way_category|单向友链分类,link_abnormal_category|异常博客分类,link_lost_category|失联博客分类,enable_auto_link_check|自动检测友链,link_check_interval|自动检测周期,link_check_batch_size|每批检测数量,link_check_failure_threshold|连续失败阈值,link_check_abnormal_days|失联博客阈值,link_auto_move_one_way|自动移动单向友链,link_auto_move_abnormal|自动移动异常与失联分组,links_thumbnail|友链页面封面图,links_default_avatar|友链默认 Logo,show_exchange_info|显示友链交换信息,links_blogger_name|交换信息名称,links_blogger_url|交换信息地址,links_blogger_avatar|交换信息 Logo,links_blogger_description|交换信息描述,links_info|友链补充信息,link_enable_comment|友链页面评论,enable_link_application|自助申请友链',
         'performance' => 'load_progress|加载进度条,enable_sw|Service Worker 优化,enable_pjax|PJAX 加载,enable_busuanzi|不蒜子访客统计,enable_baidu_push|百度 URL 自动推送,enable_toutiao_push|头条 URL 自动推送',
         'advanced' => 'external_css|外部 CSS 链接,inline_css|内嵌 CSS,external_js_head|外部 JS（head）,inline_js_head|内嵌 JS（head）,external_js_body|外部 JS（body）,inline_js_body|内嵌 JS（body）',
     );
-    $toggles = array('enable_image_bg','enable_banner','drawer_toc','show_img_name','enable_katex','enable_copyright','enable_post_share','enable_color_character','show_ad_tag','ad_tag_close','enable_tag_color','enable_tagcloud_color','enable_archivers_route','link_takeover_categories','show_exchange_info','link_enable_comment','enable_link_application','enable_friends_stats','enable_auto_link_check','link_auto_move_one_way','link_auto_move_abnormal','link_notify_recovered','link_notify_one_way','link_notify_abnormal','link_notify_lost','enable_smtp','email_notify_post_author','email_notify_moderator','email_notify_reply','enable_sw','enable_pjax','enable_gray_mode','enable_busuanzi','enable_baidu_push','enable_toutiao_push','enable_private_comment');
+    $toggles = array('enable_image_bg','enable_banner','drawer_toc','show_img_name','enable_katex','enable_copyright','enable_post_share','enable_color_character','show_ad_tag','ad_tag_close','enable_tag_color','enable_tagcloud_color','enable_archivers_route','link_takeover_categories','show_exchange_info','link_enable_comment','enable_link_application','enable_friends_stats','enable_auto_link_check','link_auto_move_one_way','link_auto_move_abnormal','link_notify_recovered','link_notify_one_way','link_notify_abnormal','link_notify_lost','enable_smtp','email_notify_post_author','email_notify_moderator','email_notify_reply','avatar_privacy','enable_sw','enable_pjax','enable_gray_mode','enable_busuanzi','enable_baidu_push','enable_toutiao_push','enable_private_comment');
     $images = array('night_logo','background_pc','background_mobile','night_background_pc','night_background_mobile','banner_image','default_thumbnail','love_oneself_avatar','love_opposite_avatar','ad_image','links_thumbnail','links_default_avatar','links_blogger_avatar');
     $textareas = array('copy_explain','color_character','notice_content','music_config','ad_custom_code','links_info','external_css','inline_css','external_js_head','inline_js_head','external_js_body','inline_js_body');
     $dates = array('website_time');
@@ -1360,7 +1372,7 @@ function dream2_mxin_settings_registry() {
             array('type'=>'tag'),
         ),
         'custom_options'=>array(),
-        'notice_show_mode'=>'default','recent_posts_num'=>'5','recent_comments_num'=>'5','categories_num'=>'10','tags_num'=>'18','tagcloud_num'=>'32','enable_hitokoto'=>'0','hitokoto_category'=>'all','enable_archivers_route'=>'1','archivers_route_slug'=>'archivers','link_takeover_categories'=>'1','link_friend_category'=>dream2_mxin_default_link_category_id('友情链接'),'link_one_way_category'=>dream2_mxin_default_link_category_id('单向友链'),'link_lost_category'=>dream2_mxin_default_link_category_id('失联博客'),'link_abnormal_category'=>dream2_mxin_default_abnormal_link_category_id(),'enable_auto_link_check'=>'0','link_check_interval'=>'daily','link_check_batch_size'=>3,'link_check_failure_threshold'=>3,'link_check_abnormal_days'=>7,'link_auto_move_one_way'=>'0','link_auto_move_abnormal'=>'0','link_notify_recovered'=>'0','link_notify_one_way'=>'0','link_notify_abnormal'=>'0','link_notify_lost'=>'0','enable_smtp'=>'0','smtp_port'=>587,'smtp_secure'=>'tls','smtp_from_email'=>get_option('admin_email'),'smtp_from_name'=>get_bloginfo('name'),'email_notify_post_author'=>'1','email_notify_moderator'=>'1','email_notify_reply'=>'0','link_enable_comment'=>'1','enable_link_application'=>'1','show_exchange_info'=>'1','links_blogger_name'=>get_bloginfo('name'),'links_blogger_url'=>home_url('/'),'links_blogger_description'=>get_bloginfo('description'),'load_progress'=>'none','cursor_style'=>'none','cursor_move'=>'none','cursor_click'=>'none','effects_lantern_mode'=>'none','effects_sakura_mode'=>'none','effects_snowflake_mode'=>'none','effects_universe_mode'=>'none','effects_circle_magic_mode'=>'none'
+        'notice_show_mode'=>'default','recent_posts_num'=>'5','recent_comments_num'=>'5','categories_num'=>'10','tags_num'=>'18','tagcloud_num'=>'32','enable_hitokoto'=>'0','hitokoto_category'=>'all','enable_archivers_route'=>'1','archivers_route_slug'=>'archivers','link_takeover_categories'=>'1','link_friend_category'=>dream2_mxin_default_link_category_id('友情链接'),'link_one_way_category'=>dream2_mxin_default_link_category_id('单向友链'),'link_lost_category'=>dream2_mxin_default_link_category_id('失联博客'),'link_abnormal_category'=>dream2_mxin_default_abnormal_link_category_id(),'enable_auto_link_check'=>'0','link_check_interval'=>'daily','link_check_batch_size'=>3,'link_check_failure_threshold'=>3,'link_check_abnormal_days'=>7,'link_auto_move_one_way'=>'0','link_auto_move_abnormal'=>'0','link_notify_recovered'=>'0','link_notify_one_way'=>'0','link_notify_abnormal'=>'0','link_notify_lost'=>'0','enable_smtp'=>'0','smtp_port'=>587,'smtp_secure'=>'tls','smtp_from_email'=>get_option('admin_email'),'smtp_from_name'=>get_bloginfo('name'),'email_notify_post_author'=>'1','email_notify_moderator'=>'1','email_notify_reply'=>'0','link_enable_comment'=>'1','enable_link_application'=>'1','show_exchange_info'=>'1','links_blogger_name'=>get_bloginfo('name'),'links_blogger_url'=>home_url('/'),'links_blogger_description'=>get_bloginfo('description'),'load_progress'=>'none','avatar_privacy'=>'1','cursor_style'=>'none','cursor_move'=>'none','cursor_click'=>'none','effects_lantern_mode'=>'none','effects_sakura_mode'=>'none','effects_snowflake_mode'=>'none','effects_universe_mode'=>'none','effects_circle_magic_mode'=>'none'
     );
     $selects = array(
         'load_progress'=>array('none'=>'关闭','left'=>'左侧展开','center'=>'居中展开'),
@@ -2116,6 +2128,7 @@ function dream2_mxin_render_settings_page() {
     $platform_notes = array(
         'enable_busuanzi' => '不蒜子为第三方前端统计服务，开启后从接入并被访问时开始累计，无法继承现有浏览量历史；仅新站点或不需要沿用历史统计时推荐开启。',
         'enable_private_comment' => '关闭后仅禁止提交新的私密评论并隐藏前台复选框，已有私密评论仍保持私密。',
+        'avatar_privacy' => '开启后将头像匿名缓存到本站，保护访客标识，但会增加服务器负担，推荐搭配 CDN 使用。关闭后恢复第三方直连，服务器负担较低，但部分头像地址可能暴露 QQ 号或账户标识。',
         'link_notify_recovered' => '友链恢复时会邮件通知对应博客管理员',
         'link_notify_one_way' => '友链进入单向友链分组时会邮件通知对应博客管理员',
         'link_notify_abnormal' => '友链进入异常分组时会邮件通知对应博客管理员',

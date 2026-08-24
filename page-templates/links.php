@@ -18,7 +18,7 @@ foreach (dream2_mxin_friend_link_group_terms() as $group) {
 }
 $bookmarks = array_merge(...array_values($link_groups ?: array(array())));
 $link_category_count = count($link_groups);
-$fallback_avatar = dream2_get('links_default_avatar', dream2_mxin_asset('img/avatar.svg')) ?: dream2_mxin_asset('img/avatar.svg');
+$fallback_avatar = dream2_mxin_default_avatar_url();
 ?>
 <div class="card dream-links-page">
     <?php if (dream2_get('links_thumbnail')) : ?><div class="card-image cover-image" style="background-image:url('<?php echo esc_url(dream2_get('links_thumbnail')); ?>')"></div><?php endif; ?>
@@ -33,7 +33,9 @@ $fallback_avatar = dream2_get('links_default_avatar', dream2_mxin_asset('img/ava
                             <?php foreach ($group_links as $bookmark) : ?>
                                 <li>
                                     <a class="links-item" href="<?php echo esc_url($bookmark->link_url); ?>" target="<?php echo esc_attr($bookmark->link_target ?: '_blank'); ?>" rel="noopener noreferrer" title="<?php echo esc_attr(wp_strip_all_tags($bookmark->link_description)); ?>">
-                                        <img class="not-gallery" src="<?php echo esc_url($fallback_avatar); ?>"<?php if ($bookmark->link_image) : ?> data-dream-avatar="<?php echo esc_url($bookmark->link_image); ?>"<?php endif; ?> alt="<?php echo esc_attr($bookmark->link_name); ?>">
+                                        <?php $pending_avatar_token = ''; ?>
+                                        <?php $protected_avatar = $bookmark->link_image ? dream2_mxin_avatar_privacy_url('friend', $bookmark->link_id . '|' . $bookmark->link_image, $bookmark->link_image, $pending_avatar_token) : ''; ?>
+                                        <img class="not-gallery" src="<?php echo esc_url($protected_avatar ?: $fallback_avatar); ?>"<?php if ($pending_avatar_token) : ?> data-dream-avatar-token="<?php echo esc_attr($pending_avatar_token); ?>"<?php elseif (!$protected_avatar && $bookmark->link_image) : ?> data-dream-avatar="<?php echo esc_url($bookmark->link_image); ?>"<?php endif; ?> alt="<?php echo esc_attr($bookmark->link_name); ?>">
                                         <span class="link-name"><?php echo esc_html($bookmark->link_name); ?></span>
                                         <div class="link-desc"><?php echo esc_html($bookmark->link_description ?: __('他还没有自我介绍呢~', 'dream2-mxin')); ?></div>
                                     </a>

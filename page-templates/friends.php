@@ -26,8 +26,10 @@ if (dream2_enabled('enable_friends_stats')) :
             <hr>
             <div class="meta">
                 <a class="has-link-grey" href="<?php echo esc_url($friend->link_url); ?>" target="_blank" rel="noopener">
-                    <?php $fallback_avatar = dream2_get('links_default_avatar', dream2_mxin_asset('img/avatar.svg')) ?: dream2_mxin_asset('img/avatar.svg'); ?>
-                    <img src="<?php echo esc_url($fallback_avatar); ?>"<?php if ($friend->link_image) : ?> data-dream-avatar="<?php echo esc_url($friend->link_image); ?>"<?php endif; ?> alt="">
+                    <?php $fallback_avatar = dream2_mxin_default_avatar_url(); ?>
+                    <?php $pending_avatar_token = ''; ?>
+                    <?php $protected_avatar = $friend->link_image ? dream2_mxin_avatar_privacy_url('friend', $friend->link_id . '|' . $friend->link_image, $friend->link_image, $pending_avatar_token) : ''; ?>
+                    <img src="<?php echo esc_url($protected_avatar ?: $fallback_avatar); ?>"<?php if ($pending_avatar_token) : ?> data-dream-avatar-token="<?php echo esc_attr($pending_avatar_token); ?>"<?php elseif (!$protected_avatar && $friend->link_image) : ?> data-dream-avatar="<?php echo esc_url($friend->link_image); ?>"<?php endif; ?> alt="">
                     <span><?php echo esc_html($friend->link_name); ?></span>
                 </a>
                 <em><?php esc_html_e('来自友情链接', 'dream2-mxin'); ?></em>
