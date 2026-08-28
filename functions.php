@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DREAM2_MXIN_VERSION', '0.7.50');
+define('DREAM2_MXIN_VERSION', '0.7.51');
 
 function dream2_mxin_enhancer_active($feature = '') {
     return (bool) apply_filters('dream2_mxin_enhancer_feature_active', defined('DREAM2_MXIN_ENHANCER_VERSION'), $feature);
