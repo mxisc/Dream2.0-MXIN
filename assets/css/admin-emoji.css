@@ -1,8 +1,17 @@
 .dream2-emoji-manager { width: 100%; max-width: 900px; }
-.dream2-emoji-groups { display: grid; align-content: start; gap: 12px; max-height: 600px; padding-right: 6px; overflow: auto; }
-.dream2-emoji-group { padding: 12px; border: 1px solid #dcdcde; border-radius: 7px; background: #f9f9f9; }
-.dream2-emoji-group.is-active { border-color: #2271b1; box-shadow: 0 0 0 1px #2271b1; }
-.dream2-emoji-group-header { display: grid; grid-template-columns: minmax(150px, 1fr) auto auto auto auto; gap: 6px; }
+.dream2-emoji-groups { display: grid; align-content: start; gap: 12px; max-height: 560px; padding-right: 6px; overflow-x: hidden; overflow-y: auto; }
+.dream2-emoji-group { padding: 12px; border: 1px solid #dfe5ee; border-radius: 7px; background: #fafbfb; transition: border-color .16s ease, opacity .16s ease, transform .16s ease; }
+.dream2-emoji-group.is-expanded { border-color: var(--dream-admin-theme, #50bfff); }
+.dream2-emoji-group.is-dragging { opacity: .45; }
+.dream2-emoji-group.is-drag-over { border-color: var(--dream-admin-theme, #50bfff); transform: translateY(2px); }
+.dream2-emoji-group-header { display: grid; grid-template-columns: 26px minmax(140px, 1fr) auto auto auto; align-items: center; gap: 6px; }
+.dream2-emoji-group-header > input { width: 100%; min-width: 0; }
+.dream2-emoji-drag-handle { display: grid; width: 26px; height: 38px; padding: 0; place-items: center; color: #646970; cursor: grab; border: 0; outline-offset: 2px; background: transparent; box-shadow: none; }
+.dream2-emoji-drag-handle::before { width: 3px; height: 3px; content: ""; border-radius: 50%; background: currentColor; box-shadow: 0 6px currentColor, 0 12px currentColor, 6px 0 currentColor, 6px 6px currentColor, 6px 12px currentColor; transform: translate(-3px, -6px); }
+.dream2-emoji-drag-handle:hover, .dream2-emoji-drag-handle:focus { color: var(--dream-admin-theme, #50bfff); border: 0; background: transparent; box-shadow: none; }
+.dream2-emoji-drag-handle:active { cursor: grabbing; }
+.dream2-emoji-count { min-width: 70px; color: var(--dream-admin-muted, #6b7280); font-size: 12px; text-align: right; white-space: nowrap; }
+.dream2-emoji-toggle { min-width: 54px; }
 .dream2-emoji-group-body[hidden] { display: none; }
 .dream2-emoji-path { display: block; margin-top: 8px; color: #646970; }
 .dream2-emoji-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 10px; }
@@ -11,6 +20,8 @@
 .dream2-emoji-item input { min-width: 0; width: 100%; }
 .dream2-emoji-actions { display: flex; gap: 8px; margin-top: 12px; }
 @media (max-width: 782px) {
-    .dream2-emoji-group-header { grid-template-columns: 1fr 1fr; }
-    .dream2-emoji-group-header input { grid-column: 1 / -1; }
+    .dream2-emoji-group-header { grid-template-columns: 26px minmax(0, 1fr) auto auto; }
+    .dream2-emoji-drag-handle { grid-row: 1 / span 2; }
+    .dream2-emoji-group-header > input { grid-column: 2 / -1; }
+    .dream2-emoji-count { grid-column: 2; min-width: 0; text-align: left; }
 }
