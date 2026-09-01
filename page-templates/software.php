@@ -45,12 +45,17 @@ while (have_posts()) :
                     <div class="dream-software-grid">
                         <?php foreach ($software_links as $software_link) :
                             $software_icon = $software_link->link_image ?: $fallback_icon;
+                            $pending_icon_token = '';
+                            $protected_icon = $software_link->link_image
+                                ? dream2_mxin_avatar_privacy_url('software', $software_link->link_id . '|' . $software_link->link_image, $software_link->link_image, $pending_icon_token)
+                                : '';
+                            $display_icon = $protected_icon ?: (dream2_mxin_avatar_privacy_enabled() ? dream2_mxin_avatar_default_url() : $software_icon);
                             $software_desc = trim($software_link->link_description) ?: __('暂无介绍。', 'dream2-mxin');
                             ?>
                             <article class="dream-software-card">
                                 <div class="dream-software-card-inner">
                                     <span class="dream-software-icon">
-                                        <img class="not-gallery" src="<?php echo esc_url($software_icon); ?>" alt="<?php echo esc_attr($software_link->link_name); ?>" loading="lazy" decoding="async">
+                                        <img class="not-gallery" src="<?php echo esc_url($display_icon); ?>"<?php if ($pending_icon_token) : ?> data-dream-avatar-token="<?php echo esc_attr($pending_icon_token); ?>"<?php endif; ?><?php if (dream2_mxin_avatar_privacy_enabled()) : ?> data-dream-avatar-fallback="<?php echo esc_url(dream2_mxin_avatar_default_url()); ?>"<?php endif; ?> alt="<?php echo esc_attr($software_link->link_name); ?>" loading="lazy" decoding="async">
                                     </span>
                                     <span class="dream-software-body">
                                         <a class="dream-software-title" href="<?php echo esc_url($software_link->link_url); ?>" target="<?php echo esc_attr($software_link->link_target ?: '_blank'); ?>" rel="noopener noreferrer"><?php echo esc_html($software_link->link_name); ?></a>

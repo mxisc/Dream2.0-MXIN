@@ -318,10 +318,31 @@
         return entries;
     }
 
+    function updateCommentEmojiScrollHint(panel) {
+        var picker = panel && panel.closest('.dream-comment-emoji-picker');
+        if (!picker) return;
+        var hasMore = panel.classList.contains('is-active')
+            && panel.scrollHeight > panel.clientHeight + 1
+            && panel.scrollTop + panel.clientHeight < panel.scrollHeight - 1;
+        picker.classList.toggle('has-more-emojis', hasMore);
+    }
+
+    function scheduleCommentEmojiScrollHint(panel) {
+        window.requestAnimationFrame(function () {
+            updateCommentEmojiScrollHint(panel);
+        });
+    }
+
+    function commentEmojiBatchSize(panel) {
+        var template = window.getComputedStyle(panel).gridTemplateColumns;
+        var columns = template && template !== 'none' ? template.trim().split(/\s+/).length : 1;
+        return Math.max(1, columns) * 6;
+    }
+
     function appendCommentEmojiBatch(panel) {
         if (!panel || !panel._dreamEmojiEntries) return;
         var start = panel._dreamEmojiRendered || 0;
-        var entries = panel._dreamEmojiEntries.slice(start, start + 42);
+        var entries = panel._dreamEmojiEntries.slice(start, start + commentEmojiBatchSize(panel));
         entries.forEach(function (entry) {
             var alias = entry[0];
             var option = document.createElement('button');
@@ -340,6 +361,7 @@
             panel.appendChild(option);
         });
         panel._dreamEmojiRendered = start + entries.length;
+        scheduleCommentEmojiScrollHint(panel);
     }
 
     function releaseCommentEmojiGroup(panel) {
@@ -351,6 +373,7 @@
         panel._dreamEmojiEntries = null;
         panel._dreamEmojiRendered = 0;
         panel.scrollTop = 0;
+        updateCommentEmojiScrollHint(panel);
     }
 
     function renderCommentEmojiGroup(panel, group) {
@@ -443,11 +466,17 @@
                     if (panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 80) {
                         appendCommentEmojiBatch(panel);
                     }
+                    updateCommentEmojiScrollHint(panel);
                 }, { passive: true });
                 panels.appendChild(panel);
             });
+            var scrollHint = document.createElement('div');
+            scrollHint.className = 'dream-comment-emoji-scroll-hint';
+            scrollHint.textContent = '下滑查看更多';
+            scrollHint.setAttribute('aria-hidden', 'true');
             picker.appendChild(tabs);
             picker.appendChild(panels);
+            picker.appendChild(scrollHint);
             wrapper.appendChild(picker);
         }
         var open = !picker.classList.contains('is-open');
@@ -466,6 +495,7 @@
             var groups = Dream2WP.emojiGroups || window.emojiLists || [];
             releaseCommentEmojiPicker(picker, activePanel);
             if (activePanel && groups[activeGroup]) renderCommentEmojiGroup(activePanel, groups[activeGroup]);
+            scheduleCommentEmojiScrollHint(activePanel);
             var wrapperRect = wrapper.getBoundingClientRect();
             var buttonRect = button.getBoundingClientRect();
             var pickerRect = picker.getBoundingClientRect();
@@ -484,6 +514,7 @@
             picker.style.left = left + 'px';
             picker.style.top = top + 'px';
         } else {
+            picker.classList.remove('has-more-emojis');
             releaseCommentEmojiPicker(picker);
         }
     }
@@ -672,13 +703,14 @@
         var panel = picker.querySelector('.dream-comment-emoji-group[data-group="' + group + '"]');
         var groups = Dream2WP.emojiGroups || window.emojiLists || [];
         releaseCommentEmojiPicker(picker, panel);
-        if (panel && groups[Number(group)]) renderCommentEmojiGroup(panel, groups[Number(group)]);
         picker.querySelectorAll('.dream-comment-emoji-tab').forEach(function (tab) {
             tab.classList.toggle('is-active', tab.dataset.group === group);
         });
         picker.querySelectorAll('.dream-comment-emoji-group').forEach(function (panel) {
             panel.classList.toggle('is-active', panel.dataset.group === group);
         });
+        if (panel && groups[Number(group)]) renderCommentEmojiGroup(panel, groups[Number(group)]);
+        scheduleCommentEmojiScrollHint(panel);
     });
 
     $(document).on('click', '.dream-comment-emoji', function () {

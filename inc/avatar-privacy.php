@@ -22,7 +22,7 @@ function dream2_mxin_avatar_cache_token($type, $identity) {
 }
 
 function dream2_mxin_avatar_cache_location($type, $identity) {
-    $type = in_array($type, array('comment', 'friend', 'user'), true) ? $type : 'comment';
+    $type = in_array($type, array('comment', 'friend', 'software', 'user'), true) ? $type : 'comment';
     $token = dream2_mxin_avatar_cache_token($type, $identity);
     $relative = 'dream-avatar-cache/v1/' . $type . '/' . substr($token, 0, 2) . '/' . $token . '.webp';
     $uploads = wp_upload_dir(null, false);
