@@ -182,8 +182,8 @@ function dream2_mxin_mail_log_type_label($channel, $mail_type) {
         ),
         'link' => array(
             'recovered' => '友链恢复通知',
-            'one_way'   => '单向友链通知',
-            'abnormal'  => '异常博客通知',
+            'one_way_reminder' => '单向友链提醒',
+            'one_way_deleted'  => '单向友链删除通知',
             'lost'      => '失联博客通知',
         ),
     );

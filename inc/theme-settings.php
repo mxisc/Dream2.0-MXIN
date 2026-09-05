@@ -47,7 +47,7 @@ function dream2_mxin_settings_subgroups() {
             array('label' => '评论设置', 'fields' => array('enable_private_comment', 'avatar_privacy')),
             array('label' => '评论表情', 'fields' => array('comment_emoji_groups')),
             array('label' => 'SMTP 发信', 'fields' => array('enable_smtp', 'smtp_host', 'smtp_port', 'smtp_secure', 'smtp_username', 'smtp_password', 'smtp_from_email', 'smtp_from_name')),
-            array('label' => '邮件通知', 'fields' => array('email_notify_post_author', 'email_notify_moderator', 'email_notify_reply', 'link_notify_recovered', 'link_notify_one_way', 'link_notify_abnormal', 'link_notify_lost')),
+            array('label' => '邮件通知', 'fields' => array('email_notify_post_author', 'email_notify_moderator', 'email_notify_reply', 'link_notify_recovered', 'link_notify_one_way_reminder', 'link_notify_one_way_deleted', 'link_notify_lost')),
         ),
         'performance' => array(
             array('label' => '页面加载', 'fields' => array('load_progress', 'enable_pjax')),
@@ -64,8 +64,8 @@ function dream2_mxin_settings_subgroups() {
 
 function dream2_mxin_link_settings_subgroups() {
     return array(
-        array('label' => '接管与分类', 'fields' => array('link_takeover_categories', 'link_friend_category', 'link_one_way_category', 'link_abnormal_category', 'link_lost_category')),
-        array('label' => '自动检测', 'fields' => array('enable_auto_link_check', 'link_check_interval', 'link_check_batch_size', 'link_check_failure_threshold', 'link_check_abnormal_days', 'link_auto_move_one_way', 'link_auto_move_abnormal')),
+        array('label' => '接管与分类', 'fields' => array('link_takeover_categories', 'link_friend_category', 'link_one_way_category', 'link_lost_category')),
+        array('label' => '自动检测', 'fields' => array('enable_auto_link_check', 'link_check_interval', 'link_check_batch_size', 'link_check_failure_threshold', 'link_auto_move_one_way', 'link_auto_move_lost', 'link_one_way_notice_days', 'link_one_way_delete_days')),
         array('label' => '页面展示', 'fields' => array('links_thumbnail', 'links_default_avatar', 'link_enable_comment', 'enable_link_application')),
         array('label' => '交换信息', 'fields' => array('show_exchange_info', 'links_blogger_name', 'links_blogger_url', 'links_blogger_avatar', 'links_blogger_description')),
         array('label' => '补充内容', 'fields' => array('links_info')),
@@ -314,17 +314,12 @@ function dream2_mxin_render_repeater_item($name, $index, $item = array()) {
 }
 
 function dream2_mxin_link_settings_fields() {
-    return array('link_takeover_categories', 'link_friend_category', 'link_one_way_category', 'link_lost_category', 'link_abnormal_category', 'enable_auto_link_check', 'link_check_interval', 'link_check_batch_size', 'link_check_failure_threshold', 'link_check_abnormal_days', 'link_auto_move_one_way', 'link_auto_move_abnormal', 'links_thumbnail', 'links_default_avatar', 'show_exchange_info', 'links_blogger_name', 'links_blogger_url', 'links_blogger_avatar', 'links_blogger_description', 'links_info', 'link_enable_comment', 'enable_link_application');
+    return array('link_takeover_categories', 'link_friend_category', 'link_one_way_category', 'link_lost_category', 'enable_auto_link_check', 'link_check_interval', 'link_check_batch_size', 'link_check_failure_threshold', 'link_auto_move_one_way', 'link_auto_move_lost', 'link_one_way_notice_days', 'link_one_way_delete_days', 'links_thumbnail', 'links_default_avatar', 'show_exchange_info', 'links_blogger_name', 'links_blogger_url', 'links_blogger_avatar', 'links_blogger_description', 'links_info', 'link_enable_comment', 'enable_link_application');
 }
 
 function dream2_mxin_default_link_category_id($name) {
     $term = get_term_by('name', $name, 'link_category');
     return $term && !is_wp_error($term) ? (int) $term->term_id : 0;
-}
-
-function dream2_mxin_default_abnormal_link_category_id() {
-    return dream2_mxin_default_link_category_id('异常博客')
-        ?: dream2_mxin_default_link_category_id('检测异常');
 }
 
 function dream2_mxin_find_link_category_id($name) {
@@ -351,9 +346,7 @@ function dream2_mxin_base_link_category_ids() {
     $friend_id = absint(dream2_get('link_friend_category', dream2_mxin_default_link_category_id('友情链接')));
     $one_way_id = absint(dream2_get('link_one_way_category', dream2_mxin_default_link_category_id('单向友链')));
     $lost_id = absint(dream2_get('link_lost_category', dream2_mxin_default_link_category_id('失联博客')));
-    $abnormal_id = absint(dream2_get('link_abnormal_category', dream2_mxin_default_abnormal_link_category_id()));
-
-    return array_values(array_unique(array_filter(array($friend_id, $one_way_id, $lost_id, $abnormal_id))));
+    return array_values(array_unique(array_filter(array($friend_id, $one_way_id, $lost_id))));
 }
 
 function dream2_mxin_extra_link_category_ids() {
@@ -440,10 +433,6 @@ function dream2_mxin_friend_link_group_terms() {
             'label' => '失联博客',
             'term_id' => absint(dream2_get('link_lost_category', dream2_mxin_default_link_category_id('失联博客'))),
         ),
-        'abnormal' => array(
-            'label' => '异常博客',
-            'term_id' => absint(dream2_get('link_abnormal_category', dream2_mxin_default_abnormal_link_category_id())),
-        ),
     );
 
     foreach ($groups as $key => $group) {
@@ -513,7 +502,7 @@ function dream2_mxin_link_extra_defaults() {
             'backlink_failures'     => 0,
             'backlink_first_failed_at' => '',
             'one_way_notified_at'   => '',
-            'abnormal_notified_at'  => '',
+            'one_way_entered_at'    => '',
             'lost_notified_at'      => '',
         ),
     );
@@ -706,7 +695,7 @@ function dream2_mxin_prepare_link_verification($previous, $result, $advance_coun
         'last_success_at',
         'moved_at',
         'one_way_notified_at',
-        'abnormal_notified_at',
+        'one_way_entered_at',
         'lost_notified_at',
     );
     foreach ($progress_fields as $field) {
@@ -769,12 +758,19 @@ function dream2_mxin_prepare_link_verification($previous, $result, $advance_coun
     return $result;
 }
 
+function dream2_mxin_link_group_name($option_name, $default_name) {
+    $term_id = absint(dream2_get($option_name, dream2_mxin_default_link_category_id($default_name)));
+    $term = $term_id ? get_term($term_id, 'link_category') : null;
+
+    return $term && !is_wp_error($term) ? $term->name : $default_name;
+}
+
 function dream2_mxin_send_link_group_notification($bookmark, $type, $verification) {
     $option_map = array(
-        'recovered' => 'link_notify_recovered',
-        'one_way'   => 'link_notify_one_way',
-        'abnormal'  => 'link_notify_abnormal',
-        'lost'      => 'link_notify_lost',
+        'recovered'        => 'link_notify_recovered',
+        'one_way_reminder' => 'link_notify_one_way_reminder',
+        'one_way_deleted'  => 'link_notify_one_way_deleted',
+        'lost'             => 'link_notify_lost',
     );
     if (empty($option_map[$type]) || !dream2_enabled($option_map[$type])) {
         return false;
@@ -786,15 +782,59 @@ function dream2_mxin_send_link_group_notification($bookmark, $type, $verificatio
     }
 
     $site_name = wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
-    if ($type === 'recovered') {
+    $headers = dream2_mxin_mail_headers();
+    $friend_group = dream2_mxin_link_group_name('link_friend_category', '友情链接');
+    $one_way_group = dream2_mxin_link_group_name('link_one_way_category', '单向友链');
+    $lost_group = dream2_mxin_link_group_name('link_lost_category', '失联博客');
+    if (in_array($type, array('one_way_reminder', 'one_way_deleted'), true)) {
+        $is_deleted = $type === 'one_way_deleted';
+        $days = max(1, absint(dream2_get(
+            $is_deleted ? 'link_one_way_delete_days' : 'link_one_way_notice_days',
+            $is_deleted ? 7 : 1
+        )));
+        $delete_days = max(
+            max(1, absint(dream2_get('link_one_way_notice_days', 1))),
+            absint(dream2_get('link_one_way_delete_days', 7))
+        );
+        $subject = sprintf('[%s] %s：%s', $site_name, $is_deleted ? '友情链接已删除' : '单向友链提醒', $bookmark->link_name);
+        $rows = array(
+            array('label' => '友链名称', 'value' => $bookmark->link_name),
+            array('label' => '友链地址', 'value' => $bookmark->link_url),
+            array('label' => '反链检测页', 'value' => $extra['backlink_url'] ?? ''),
+            array('label' => '处理规则', 'value' => sprintf('进入%s分组 %d 天后%s', $one_way_group, $days, $is_deleted ? '删除' : '提醒')),
+            array('label' => '检测结果', 'value' => $verification['message'] ?? ''),
+            array('label' => '进入时间', 'value' => $verification['one_way_entered_at'] ?? ''),
+        );
+        if (!$is_deleted) {
+            $rows[] = array(
+                'label' => '后续处理',
+                'value' => sprintf('进入%s分组满 %d 天时，如果仍未检测到反链，该友链将被自动删除。', $one_way_group, $delete_days),
+            );
+        }
+        $message = dream2_mxin_mail_template(
+            $is_deleted ? '友情链接已删除' : '单向友链提醒',
+            $is_deleted
+                ? sprintf('该友链进入%s分组后仍未恢复反链，现已按站点规则删除。', $one_way_group)
+                : '本站暂未在反链检测页找到友链。新主题可能导致反链无法识别，友链页面路径变更也可能触发提醒；如果属于误判，或页面、路径已经更新，请联系本站博主处理。',
+            $rows,
+            '访问本站',
+            home_url('/')
+        );
+        if ($is_deleted) {
+            $site_admin = sanitize_email(get_option('admin_email'));
+            if ($site_admin && is_email($site_admin) && strtolower($site_admin) !== strtolower($email)) {
+                $headers[] = 'Cc: ' . $site_admin;
+            }
+        }
+    } elseif ($type === 'recovered') {
         $subject = sprintf('[%s] 友链已恢复正常：%s', $site_name, $bookmark->link_name);
         $message = dream2_mxin_mail_template(
             '友链已恢复正常',
-            '这条友链检测成功，已恢复到友情链接正常分组。',
+            sprintf('友链检测成功，已恢复到%s分组。', $friend_group),
             array(
                 array('label' => '友链名称', 'value' => $bookmark->link_name),
                 array('label' => '友链地址', 'value' => $bookmark->link_url),
-                array('label' => '目标分组', 'value' => '友情链接'),
+                array('label' => '目标分组', 'value' => $friend_group),
                 array('label' => '检测结果', 'value' => $verification['message'] ?? ''),
                 array('label' => '检测时间', 'value' => $verification['checked_at'] ?? current_time('mysql')),
             ),
@@ -803,9 +843,8 @@ function dream2_mxin_send_link_group_notification($bookmark, $type, $verificatio
         );
     } else {
         $labels = array(
-            'one_way'  => '单向友链',
-            'abnormal' => '异常博客',
-            'lost'     => '失联博客',
+            'one_way'  => $one_way_group,
+            'lost'     => $lost_group,
         );
         $label = $labels[$type] ?? '友链状态变更';
         $subject = sprintf('[%s] 友链已进入%s分组：%s', $site_name, $label, $bookmark->link_name);
@@ -814,7 +853,7 @@ function dream2_mxin_send_link_group_notification($bookmark, $type, $verificatio
         } elseif ($type === 'one_way') {
             $rule = dream2_mxin_link_one_way_rule_text();
         } else {
-            $rule = dream2_mxin_link_abnormal_rule_text();
+            $rule = dream2_mxin_link_lost_rule_text();
         }
         $failure_count = $type === 'one_way'
             ? absint($verification['backlink_failures'] ?? 0)
@@ -842,7 +881,7 @@ function dream2_mxin_send_link_group_notification($bookmark, $type, $verificatio
         $email,
         $subject,
         $message,
-        dream2_mxin_mail_headers(),
+        $headers,
         array(
             'channel'   => 'link',
             'mail_type' => $type,
@@ -850,6 +889,57 @@ function dream2_mxin_send_link_group_notification($bookmark, $type, $verificatio
             'attempt'   => 1,
         )
     );
+}
+
+function dream2_mxin_process_one_way_lifecycle($bookmark, $verification) {
+    $one_way_id = absint(dream2_get('link_one_way_category', dream2_mxin_default_link_category_id('单向友链')));
+    if (!$one_way_id) {
+        return false;
+    }
+    $term_ids = wp_get_object_terms((int) $bookmark->link_id, 'link_category', array('fields' => 'ids'));
+    if (is_wp_error($term_ids) || !in_array($one_way_id, array_map('intval', $term_ids), true)) {
+        return false;
+    }
+
+    $extra = dream2_mxin_link_extra($bookmark);
+    $verification = array_merge($extra['verification'], is_array($verification) ? $verification : array());
+    if (empty($verification['one_way_entered_at'])) {
+        $verification['one_way_entered_at'] = current_time('mysql');
+        $verification['one_way_notified_at'] = '';
+    }
+    $entered_at = strtotime($verification['one_way_entered_at']);
+    if (!$entered_at) {
+        return false;
+    }
+    $elapsed = current_time('timestamp') - $entered_at;
+    $notice_days = max(1, absint(dream2_get('link_one_way_notice_days', 1)));
+    $delete_days = max($notice_days, absint(dream2_get('link_one_way_delete_days', 7)));
+
+    if ($elapsed >= $notice_days * DAY_IN_SECONDS && empty($verification['one_way_notified_at'])) {
+        if (dream2_mxin_send_link_group_notification($bookmark, 'one_way_reminder', $verification)) {
+            $verification['one_way_notified_at'] = current_time('mysql');
+        }
+    }
+
+    global $wpdb;
+    $wpdb->update(
+        $wpdb->links,
+        array('link_notes' => dream2_mxin_link_notes($extra['admin_email'], $extra['backlink_url'], $verification)),
+        array('link_id' => (int) $bookmark->link_id),
+        array('%s'),
+        array('%d')
+    );
+    clean_bookmark_cache((int) $bookmark->link_id);
+
+    if ($elapsed < $delete_days * DAY_IN_SECONDS) {
+        return false;
+    }
+    require_once ABSPATH . 'wp-admin/includes/bookmark.php';
+    $deleted = (bool) wp_delete_link((int) $bookmark->link_id);
+    if ($deleted) {
+        dream2_mxin_send_link_group_notification($bookmark, 'one_way_deleted', $verification);
+    }
+    return $deleted;
 }
 
 function dream2_mxin_store_link_verification(
@@ -872,52 +962,44 @@ function dream2_mxin_store_link_verification(
     $friend_id = absint(dream2_get('link_friend_category', dream2_mxin_default_link_category_id('友情链接')));
     $one_way_id = absint(dream2_get('link_one_way_category', dream2_mxin_default_link_category_id('单向友链')));
     $lost_id = absint(dream2_get('link_lost_category', dream2_mxin_default_link_category_id('失联博客')));
-    $abnormal_id = absint(dream2_get('link_abnormal_category', dream2_mxin_default_abnormal_link_category_id()));
     $term_ids = wp_get_object_terms((int) $bookmark->link_id, 'link_category', array('fields' => 'ids'));
     $term_ids = is_wp_error($term_ids) ? array() : array_map('intval', $term_ids);
     $is_one_way = $one_way_id && in_array($one_way_id, $term_ids, true);
-    $is_abnormal = $abnormal_id && in_array($abnormal_id, $term_ids, true);
     $is_lost = $lost_id && in_array($lost_id, $term_ids, true);
+    $friend_group = dream2_mxin_link_group_name('link_friend_category', '友情链接');
+    $one_way_group = dream2_mxin_link_group_name('link_one_way_category', '单向友链');
+    $lost_group = dream2_mxin_link_group_name('link_lost_category', '失联博客');
 
     $auto_move_one_way = dream2_enabled('link_auto_move_one_way');
-    $auto_move_abnormal = dream2_enabled('link_auto_move_abnormal');
+    $auto_move_lost = dream2_enabled('link_auto_move_lost');
     if ($allow_auto_move) {
         if (
             !$access_failed
             && !$backlink_failed
             && (
                 ($is_one_way && $auto_move_one_way)
-                || (($is_abnormal || $is_lost) && $auto_move_abnormal)
+                || ($is_lost && $auto_move_lost)
             )
             && $friend_id
         ) {
             $move_to_id = $friend_id;
             $move_type = 'normal';
         } elseif (
-            $auto_move_abnormal
+            $auto_move_lost
             && $access_failed
             && $verification['access_failures'] >= max(
                 1,
                 absint(dream2_get('link_check_failure_threshold', 3))
             )
         ) {
-            if ($is_abnormal && $lost_id) {
-                $days = max(1, absint(dream2_get('link_check_abnormal_days', 7)));
-                $abnormal_since = strtotime(get_gmt_from_date(
-                    $verification['moved_at'] ?: $verification['access_first_failed_at']
-                ));
-                if ($abnormal_since && time() - $abnormal_since >= $days * DAY_IN_SECONDS) {
-                    $move_to_id = $lost_id;
-                    $move_type = 'lost';
-                }
-            } elseif (!$is_lost && $abnormal_id) {
-                $move_to_id = $abnormal_id;
-                $move_type = 'abnormal';
+            if (!$is_lost && $lost_id) {
+                $move_to_id = $lost_id;
+                $move_type = 'lost';
             }
         } elseif ($auto_move_one_way && $backlink_failed && !$is_one_way && $one_way_id) {
             $backlink_confirmed = $verification['backlink_failures']
                 >= max(1, absint(dream2_get('link_check_failure_threshold', 3)));
-            if ($backlink_confirmed || $is_abnormal || $is_lost) {
+            if ($backlink_confirmed || $is_lost) {
                 $move_to_id = $one_way_id;
                 $move_type = 'one_way';
             }
@@ -952,32 +1034,23 @@ function dream2_mxin_store_link_verification(
         if (!is_wp_error($moved)) {
             $verification['moved_at'] = current_time('mysql');
             if ($move_type === 'normal') {
-                $verification['message'] .= '；已恢复到友情链接分组';
+                $verification['message'] .= sprintf('；已恢复到%s分组', $friend_group);
                 dream2_mxin_send_link_group_notification($bookmark, 'recovered', $verification);
                 $verification['one_way_notified_at'] = '';
-                $verification['abnormal_notified_at'] = '';
+                $verification['one_way_entered_at'] = '';
                 $verification['lost_notified_at'] = '';
             } elseif ($move_type === 'one_way') {
-                $verification['message'] .= '；已移动到单向友链分组';
-                if (!$verification['one_way_notified_at'] && dream2_mxin_send_link_group_notification($bookmark, 'one_way', $verification)) {
-                    $verification['one_way_notified_at'] = current_time('mysql');
-                }
-                $verification['abnormal_notified_at'] = '';
+                $verification['message'] .= sprintf('；已移动到%s分组', $one_way_group);
+                $verification['one_way_entered_at'] = current_time('mysql');
+                $verification['one_way_notified_at'] = '';
                 $verification['lost_notified_at'] = '';
             } elseif ($move_type === 'lost') {
-                $verification['message'] .= '；已移动到失联博客分组';
+                $verification['message'] .= sprintf('；已移动到%s分组', $lost_group);
                 if (!$verification['lost_notified_at'] && dream2_mxin_send_link_group_notification($bookmark, 'lost', $verification)) {
                     $verification['lost_notified_at'] = current_time('mysql');
                 }
                 $verification['one_way_notified_at'] = '';
-                $verification['abnormal_notified_at'] = '';
-            } elseif ($move_type === 'abnormal') {
-                $verification['message'] .= '；已移动到异常博客分组';
-                if (!$verification['abnormal_notified_at'] && dream2_mxin_send_link_group_notification($bookmark, 'abnormal', $verification)) {
-                    $verification['abnormal_notified_at'] = current_time('mysql');
-                }
-                $verification['one_way_notified_at'] = '';
-                $verification['lost_notified_at'] = '';
+                $verification['one_way_entered_at'] = '';
             }
             $save_notes();
         }
@@ -1087,6 +1160,10 @@ function dream2_mxin_run_scheduled_link_check($force = false) {
                     dream2_mxin_verify_friend_link($bookmark),
                     true
                 );
+                $bookmark = get_bookmark($link_id);
+                if ($bookmark) {
+                    dream2_mxin_process_one_way_lifecycle($bookmark, $verification);
+                }
                 if (!empty($verification['confirmed_failure'])) {
                     $state['cycle_failures']++;
                 }
@@ -1292,9 +1369,12 @@ function dream2_mxin_handle_link_manager_action() {
     $admin_email = isset($_POST['admin_email']) ? sanitize_email(wp_unslash($_POST['admin_email'])) : '';
     $backlink_url = isset($_POST['backlink_url']) ? esc_url_raw(wp_unslash($_POST['backlink_url'])) : '';
     $verification = array();
+    $previous_category_ids = array();
     if ($link_id) {
         $existing_bookmark = get_bookmark($link_id);
         if ($existing_bookmark) {
+            $previous_category_ids = wp_get_object_terms($link_id, 'link_category', array('fields' => 'ids'));
+            $previous_category_ids = is_wp_error($previous_category_ids) ? array() : array_map('intval', $previous_category_ids);
             $existing_extra = dream2_mxin_link_extra($existing_bookmark);
             $same_check_targets = esc_url_raw($existing_bookmark->link_url) === $link_url
                 && esc_url_raw($existing_extra['backlink_url']) === $backlink_url;
@@ -1302,6 +1382,17 @@ function dream2_mxin_handle_link_manager_action() {
                 $verification = $existing_extra['verification'];
             }
         }
+    }
+    $one_way_id = absint(dream2_get('link_one_way_category', dream2_mxin_default_link_category_id('单向友链')));
+    $was_one_way = $one_way_id && in_array($one_way_id, $previous_category_ids, true);
+    $is_one_way = $one_way_id && $link_category === $one_way_id;
+    if ($is_one_way && !$was_one_way) {
+        $verification = array_merge(dream2_mxin_link_extra_defaults()['verification'], $verification);
+        $verification['one_way_entered_at'] = current_time('mysql');
+        $verification['one_way_notified_at'] = '';
+    } elseif (!$is_one_way) {
+        $verification['one_way_entered_at'] = '';
+        $verification['one_way_notified_at'] = '';
     }
     $linkdata = array(
         'link_name'        => $link_name,
@@ -1337,12 +1428,12 @@ function dream2_mxin_settings_registry() {
         'appearance' => 'theme_style|主题风格,default_theme|默认主题模式,theme_color|明亮模式主题色,night_theme_color|黑暗模式主题色,font_preset|博客字体,web_font|自定义字体 CSS 链接,custom_font|自定义字体名称,night_logo|黑暗模式 Logo,enable_image_bg|开启博客背景图,card_opacity|卡片透明度,background_image_opacity|背景图透明度,background_pc|明亮模式 PC 背景图,background_mobile|明亮模式移动端背景图,night_background_pc|黑暗模式 PC 背景图,night_background_mobile|黑暗模式移动端背景图,cursor_style|鼠标风格,cursor_move|鼠标移动特效,cursor_click|鼠标点击特效,effects_lantern_mode|灯笼特效,effects_sakura_mode|樱花特效,effects_snowflake_mode|雪花特效,effects_universe_mode|宇宙星空特效,effects_circle_magic_mode|上升圆点特效,enable_gray_mode|灰色模式',
         'home_layout' => 'index_inform|首页通知,enable_banner|开启博客横幅大图,banner_image|横幅背景图,banner_description|横幅文字描述,sidebar_column|博客布局方式,carousel_options|首页大图轮播选项,module_options|模块化布局选项,left_sidebar_sticky|左侧边栏悬浮,right_sidebar_sticky|右侧边栏悬浮',
         'content_page' => 'default_thumbnail|默认文章封面图,top_thumbnail_mode|置顶文章封面模式,thumbnail_mode|文章列表封面模式,drawer_toc|侧边抽屉式目录,code_pretty|代码块高亮主题,code_fold_line|代码块折叠行数（0-500）,img_fold_height|正文长图折叠高度（0-3000px）,show_img_name|显示图片名称,invalid_tips_day|文章失效提示天数,enable_katex|KaTeX 公式支持,enable_copyright|开启文章版权声明,enable_post_share|开启文章分享,enable_archivers_route|启用文章归档页,archivers_route_slug|文章归档路径,enable_friends_stats|朋友圈统计信息',
-        'communication' => 'enable_private_comment|允许私密评论,avatar_privacy|头像隐私保护,comment_emoji_groups|评论表情分组,enable_smtp|启用 SMTP,smtp_host|SMTP 主机,smtp_port|SMTP 端口,smtp_secure|加密方式,smtp_username|SMTP 账号,smtp_password|SMTP 密码,smtp_from_email|发件邮箱,smtp_from_name|发件名称,email_notify_post_author|新评论提醒,email_notify_moderator|待审核评论提醒,email_notify_reply|回评提醒,link_notify_recovered|友链博客恢复提醒,link_notify_one_way|友链博客单向提醒,link_notify_abnormal|友链博客异常提醒,link_notify_lost|友链博客失联提醒',
-        'link' => 'link_takeover_categories|梦屿接管友链分类,link_friend_category|友情链接分类,link_one_way_category|单向友链分类,link_abnormal_category|异常博客分类,link_lost_category|失联博客分类,enable_auto_link_check|自动检测友链,link_check_interval|自动检测周期,link_check_batch_size|每批检测数量,link_check_failure_threshold|连续失败阈值,link_check_abnormal_days|失联博客阈值,link_auto_move_one_way|自动移动单向友链,link_auto_move_abnormal|自动移动异常与失联分组,links_thumbnail|友链页面封面图,links_default_avatar|友链默认 Logo,show_exchange_info|显示友链交换信息,links_blogger_name|交换信息名称,links_blogger_url|交换信息地址,links_blogger_avatar|交换信息 Logo,links_blogger_description|交换信息描述,links_info|友链补充信息,link_enable_comment|友链页面评论,enable_link_application|自助申请友链',
+        'communication' => 'enable_private_comment|允许私密评论,avatar_privacy|头像隐私保护,comment_emoji_groups|评论表情分组,enable_smtp|启用 SMTP,smtp_host|SMTP 主机,smtp_port|SMTP 端口,smtp_secure|加密方式,smtp_username|SMTP 账号,smtp_password|SMTP 密码,smtp_from_email|发件邮箱,smtp_from_name|发件名称,email_notify_post_author|新评论提醒,email_notify_moderator|待审核评论提醒,email_notify_reply|回评提醒,link_notify_recovered|友链博客恢复提醒,link_notify_one_way_reminder|单向友链提醒通知,link_notify_one_way_deleted|单向友链删除通知,link_notify_lost|友链博客失联提醒',
+        'link' => 'link_takeover_categories|梦屿接管友链分类,link_friend_category|友情链接分类,link_one_way_category|单向友链分类,link_lost_category|失联博客分类,enable_auto_link_check|自动检测友链,link_check_interval|自动检测周期,link_check_batch_size|每批检测数量,link_check_failure_threshold|连续失败阈值,link_auto_move_one_way|自动移动单向友链,link_auto_move_lost|自动移动失联博客,link_one_way_notice_days|单向友链提醒天数,link_one_way_delete_days|单向友链删除天数,links_thumbnail|友链页面封面图,links_default_avatar|友链默认 Logo,show_exchange_info|显示友链交换信息,links_blogger_name|交换信息名称,links_blogger_url|交换信息地址,links_blogger_avatar|交换信息 Logo,links_blogger_description|交换信息描述,links_info|友链补充信息,link_enable_comment|友链页面评论,enable_link_application|自助申请友链',
         'performance' => 'load_progress|加载进度条,enable_sw|Service Worker 优化,enable_pjax|PJAX 加载,enable_busuanzi|不蒜子访客统计,enable_baidu_push|百度 URL 自动推送,enable_toutiao_push|头条 URL 自动推送',
         'advanced' => 'external_css|外部 CSS 链接,inline_css|内嵌 CSS,external_js_head|外部 JS（head）,inline_js_head|内嵌 JS（head）,external_js_body|外部 JS（body）,inline_js_body|内嵌 JS（body）',
     );
-    $toggles = array('enable_image_bg','enable_banner','drawer_toc','show_img_name','enable_katex','enable_copyright','enable_post_share','enable_color_character','show_ad_tag','ad_tag_close','enable_tag_color','enable_tagcloud_color','enable_archivers_route','link_takeover_categories','show_exchange_info','link_enable_comment','enable_link_application','enable_friends_stats','enable_auto_link_check','link_auto_move_one_way','link_auto_move_abnormal','link_notify_recovered','link_notify_one_way','link_notify_abnormal','link_notify_lost','enable_smtp','email_notify_post_author','email_notify_moderator','email_notify_reply','avatar_privacy','enable_sw','enable_pjax','enable_gray_mode','enable_busuanzi','enable_baidu_push','enable_toutiao_push','enable_private_comment');
+    $toggles = array('enable_image_bg','enable_banner','drawer_toc','show_img_name','enable_katex','enable_copyright','enable_post_share','enable_color_character','show_ad_tag','ad_tag_close','enable_tag_color','enable_tagcloud_color','enable_archivers_route','link_takeover_categories','show_exchange_info','link_enable_comment','enable_link_application','enable_friends_stats','enable_auto_link_check','link_auto_move_one_way','link_auto_move_lost','link_notify_recovered','link_notify_one_way_reminder','link_notify_one_way_deleted','link_notify_lost','enable_smtp','email_notify_post_author','email_notify_moderator','email_notify_reply','avatar_privacy','enable_sw','enable_pjax','enable_gray_mode','enable_busuanzi','enable_baidu_push','enable_toutiao_push','enable_private_comment');
     $images = array('night_logo','background_pc','background_mobile','night_background_pc','night_background_mobile','banner_image','default_thumbnail','love_oneself_avatar','love_opposite_avatar','ad_image','links_thumbnail','links_default_avatar','links_blogger_avatar');
     $textareas = array('copy_explain','color_character','notice_content','music_config','ad_custom_code','links_info','external_css','inline_css','external_js_head','inline_js_head','external_js_body','inline_js_body');
     $dates = array('website_time');
@@ -1354,7 +1445,8 @@ function dream2_mxin_settings_registry() {
         'invalid_tips_day'=>array('min'=>0,'step'=>1),
         'link_check_batch_size'=>array('min'=>1,'max'=>10,'step'=>1),
         'link_check_failure_threshold'=>array('min'=>1,'max'=>10,'step'=>1),
-        'link_check_abnormal_days'=>array('min'=>1,'max'=>90,'step'=>1),
+        'link_one_way_notice_days'=>array('min'=>1,'max'=>90,'step'=>1),
+        'link_one_way_delete_days'=>array('min'=>1,'max'=>365,'step'=>1),
         'smtp_port'=>array('min'=>1,'max'=>65535,'step'=>1),
     );
     $ranges = array(
@@ -1372,7 +1464,7 @@ function dream2_mxin_settings_registry() {
             array('type'=>'tag'),
         ),
         'custom_options'=>array(),
-        'notice_show_mode'=>'default','recent_posts_num'=>'5','recent_comments_num'=>'5','categories_num'=>'10','tags_num'=>'18','tagcloud_num'=>'32','enable_hitokoto'=>'0','hitokoto_category'=>'all','enable_archivers_route'=>'1','archivers_route_slug'=>'archivers','link_takeover_categories'=>'1','link_friend_category'=>dream2_mxin_default_link_category_id('友情链接'),'link_one_way_category'=>dream2_mxin_default_link_category_id('单向友链'),'link_lost_category'=>dream2_mxin_default_link_category_id('失联博客'),'link_abnormal_category'=>dream2_mxin_default_abnormal_link_category_id(),'enable_auto_link_check'=>'0','link_check_interval'=>'daily','link_check_batch_size'=>3,'link_check_failure_threshold'=>3,'link_check_abnormal_days'=>7,'link_auto_move_one_way'=>'0','link_auto_move_abnormal'=>'0','link_notify_recovered'=>'0','link_notify_one_way'=>'0','link_notify_abnormal'=>'0','link_notify_lost'=>'0','enable_smtp'=>'0','smtp_port'=>587,'smtp_secure'=>'tls','smtp_from_email'=>get_option('admin_email'),'smtp_from_name'=>get_bloginfo('name'),'email_notify_post_author'=>'1','email_notify_moderator'=>'1','email_notify_reply'=>'0','link_enable_comment'=>'1','enable_link_application'=>'1','show_exchange_info'=>'1','links_blogger_name'=>get_bloginfo('name'),'links_blogger_url'=>home_url('/'),'links_blogger_description'=>get_bloginfo('description'),'load_progress'=>'none','avatar_privacy'=>'1','cursor_style'=>'none','cursor_move'=>'none','cursor_click'=>'none','effects_lantern_mode'=>'none','effects_sakura_mode'=>'none','effects_snowflake_mode'=>'none','effects_universe_mode'=>'none','effects_circle_magic_mode'=>'none'
+        'notice_show_mode'=>'default','recent_posts_num'=>'5','recent_comments_num'=>'5','categories_num'=>'10','tags_num'=>'18','tagcloud_num'=>'32','enable_hitokoto'=>'0','hitokoto_category'=>'all','enable_archivers_route'=>'1','archivers_route_slug'=>'archivers','link_takeover_categories'=>'1','link_friend_category'=>dream2_mxin_default_link_category_id('友情链接'),'link_one_way_category'=>dream2_mxin_default_link_category_id('单向友链'),'link_lost_category'=>dream2_mxin_default_link_category_id('失联博客'),'enable_auto_link_check'=>'0','link_check_interval'=>'daily','link_check_batch_size'=>3,'link_check_failure_threshold'=>3,'link_auto_move_one_way'=>'0','link_auto_move_lost'=>'0','link_one_way_notice_days'=>1,'link_one_way_delete_days'=>7,'link_notify_recovered'=>'0','link_notify_one_way_reminder'=>'0','link_notify_one_way_deleted'=>'0','link_notify_lost'=>'0','enable_smtp'=>'0','smtp_port'=>587,'smtp_secure'=>'tls','smtp_from_email'=>get_option('admin_email'),'smtp_from_name'=>get_bloginfo('name'),'email_notify_post_author'=>'1','email_notify_moderator'=>'1','email_notify_reply'=>'0','link_enable_comment'=>'1','enable_link_application'=>'1','show_exchange_info'=>'1','links_blogger_name'=>get_bloginfo('name'),'links_blogger_url'=>home_url('/'),'links_blogger_description'=>get_bloginfo('description'),'load_progress'=>'none','avatar_privacy'=>'1','cursor_style'=>'none','cursor_move'=>'none','cursor_click'=>'none','effects_lantern_mode'=>'none','effects_sakura_mode'=>'none','effects_snowflake_mode'=>'none','effects_universe_mode'=>'none','effects_circle_magic_mode'=>'none'
     );
     $selects = array(
         'load_progress'=>array('none'=>'关闭','left'=>'左侧展开','center'=>'居中展开'),
@@ -1495,7 +1587,7 @@ function dream2_mxin_mail_rows($rows) {
     return $html;
 }
 
-function dream2_mxin_mail_template($title, $summary, $rows = array(), $action_text = '', $action_url = '') {
+function dream2_mxin_mail_template($title, $summary, $rows = array(), $action_text = '', $action_url = '', $secondary_actions = array()) {
     $site_name = wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
     $theme = dream2_mxin_mail_theme_color();
     $night = dream2_mxin_mail_theme_color('#5d93db');
@@ -1503,6 +1595,38 @@ function dream2_mxin_mail_template($title, $summary, $rows = array(), $action_te
     $action_html = '';
     if ($action_text !== '' && $action_url !== '') {
         $action_html = '<p style="margin:22px 0 0;"><a href="' . esc_url($action_url) . '" style="display:inline-block;padding:11px 20px;border-radius:999px;background:' . esc_attr($theme) . ';color:#fff;font-size:14px;font-weight:700;text-decoration:none;">' . esc_html($action_text) . '</a></p>';
+    }
+    if ($secondary_actions) {
+        $cells = array();
+        foreach ($secondary_actions as $action) {
+            $text = isset($action['text']) ? (string) $action['text'] : '';
+            $url = isset($action['url']) ? (string) $action['url'] : '';
+            if ($text === '' || $url === '') {
+                continue;
+            }
+            if (!empty($action['danger'])) {
+                $background = '#fff1f2';
+                $border = '#fecdd3';
+                $color = '#dc2626';
+            } elseif (!empty($action['primary'])) {
+                $background = $theme;
+                $border = $theme;
+                $color = '#ffffff';
+            } else {
+                $background = '#f8fafc';
+                $border = '#cbd5e1';
+                $color = '#334155';
+            }
+            $cells[] = '<td style="padding:0 8px 0 0;">'
+                . '<a href="' . esc_url($url) . '" style="display:inline-block;padding:9px 14px;border:1px solid ' . esc_attr($border) . ';border-radius:8px;background:' . esc_attr($background) . ';color:' . esc_attr($color) . ';font-size:13px;font-weight:700;line-height:1.2;text-decoration:none;">' . esc_html($text) . '</a>'
+                . '</td>';
+        }
+        if ($cells) {
+            $action_html .= '<div style="margin:' . ($action_html === '' ? '22px' : '14px') . ' 0 0;padding:14px 16px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;">'
+                . '<div style="margin:0 0 10px;color:#64748b;font-size:12px;font-weight:700;letter-spacing:.08em;">快捷处理</div>'
+                . '<table role="presentation" cellspacing="0" cellpadding="0"><tr>' . implode('', $cells) . '</tr></table>'
+                . '</div>';
+        }
     }
 
     return '<!doctype html><html><body style="margin:0;padding:0;background:#f4f7fb;color:#111827;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,Microsoft YaHei,sans-serif;">'
@@ -1531,10 +1655,10 @@ function dream2_mxin_link_interval_days() {
     return array('daily' => 1, 'three_days' => 3, 'weekly' => 7)[$value] ?? 1;
 }
 
-function dream2_mxin_link_abnormal_rule_text() {
+function dream2_mxin_link_lost_rule_text() {
     $interval_days = dream2_mxin_link_interval_days();
     $threshold = max(1, absint(dream2_get('link_check_failure_threshold', 3)));
-    return sprintf('%d 天 × %d 次 ≈ %d 天', $interval_days, $threshold, $interval_days * $threshold);
+    return sprintf('站点连续访问失败 %d 次（按当前周期约 %d 天）', $threshold, $interval_days * $threshold);
 }
 
 function dream2_mxin_link_one_way_rule_text() {
@@ -1542,11 +1666,6 @@ function dream2_mxin_link_one_way_rule_text() {
         1,
         absint(dream2_get('link_check_failure_threshold', 3))
     ) . ' 次';
-}
-
-function dream2_mxin_link_lost_rule_text() {
-    $days = max(1, absint(dream2_get('link_check_abnormal_days', 7)));
-    return sprintf('异常持续 %d 天 ≈ %d 天', $days, $days);
 }
 
 function dream2_mxin_smtp_enabled() {
@@ -1862,8 +1981,13 @@ function dream2_mxin_send_queued_comment_mail($comment_id, $type) {
             '新评论等待审核',
             '有一条新评论正在等待审核，处理后才会出现在前台。',
             $rows,
-            '审核评论',
-            admin_url('comment.php?action=editcomment&c=' . (int) $comment->comment_ID)
+            '',
+            '',
+            array(
+                array('text' => '批准评论', 'url' => admin_url('comment.php?action=approve&c=' . (int) $comment->comment_ID), 'primary' => true),
+                array('text' => '标为垃圾评论', 'url' => admin_url('comment.php?action=spam&c=' . (int) $comment->comment_ID)),
+                array('text' => '删除评论', 'url' => admin_url('comment.php?action=trash&c=' . (int) $comment->comment_ID), 'danger' => true),
+            )
         );
     } elseif ($type === 'reply') {
         $parent = get_comment($comment->comment_parent);
@@ -1883,7 +2007,11 @@ function dream2_mxin_send_queued_comment_mail($comment_id, $type) {
             '你的文章有一条新的已发布评论。',
             $rows,
             '查看评论',
-            get_comment_link($comment)
+            get_comment_link($comment),
+            array(
+                array('text' => '编辑评论', 'url' => admin_url('comment.php?action=editcomment&c=' . (int) $comment->comment_ID)),
+                array('text' => '删除评论', 'url' => admin_url('comment.php?action=trash&c=' . (int) $comment->comment_ID), 'danger' => true),
+            )
         );
     }
 
@@ -1938,7 +2066,77 @@ function dream2_mxin_deprecated_option_keys() {
         'sw_cdn_source', 'enable_tags_tag_color', 'providerMirror', 'enable_debug',
         'journals_fold_height', 'enable_journals_comment', 'enable_journals_share',
         'journals_share_image', 'metadata_name', 'sidebar_show', 'avatar_source',
+        'link_abnormal_category', 'link_check_abnormal_days', 'link_auto_move_abnormal',
+        'link_notify_one_way', 'link_notify_abnormal',
     );
+}
+
+function dream2_mxin_migrate_removed_abnormal_link_group() {
+    if (get_option('dream2_link_group_state_version') === '3') {
+        return true;
+    }
+    $lock_key = 'dream2_link_group_state_migration_lock';
+    $locked_at = (int) get_option($lock_key, 0);
+    if ($locked_at && time() - $locked_at >= 15 * MINUTE_IN_SECONDS) {
+        delete_option($lock_key);
+    }
+    if (!add_option($lock_key, time(), '', false)) {
+        return false;
+    }
+
+    $success = true;
+    try {
+        $options = get_option('dream2_options', array());
+        $options = is_array($options) ? $options : array();
+        if (!array_key_exists('link_auto_move_lost', $options) && array_key_exists('link_auto_move_abnormal', $options)) {
+            $options['link_auto_move_lost'] = filter_var($options['link_auto_move_abnormal'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+        }
+        if (array_key_exists('link_notify_one_way', $options)) {
+            $legacy_one_way_notice = filter_var($options['link_notify_one_way'], FILTER_VALIDATE_BOOLEAN) ? '1' : '0';
+            if (!array_key_exists('link_notify_one_way_reminder', $options)) {
+                $options['link_notify_one_way_reminder'] = $legacy_one_way_notice;
+            }
+            if (!array_key_exists('link_notify_one_way_deleted', $options)) {
+                $options['link_notify_one_way_deleted'] = $legacy_one_way_notice;
+            }
+        }
+        $abnormal_id = absint($options['link_abnormal_category'] ?? 0);
+        if (!$abnormal_id) {
+            $abnormal_id = dream2_mxin_default_link_category_id('异常博客')
+                ?: dream2_mxin_default_link_category_id('检测异常');
+        }
+        $lost_id = absint($options['link_lost_category'] ?? dream2_mxin_default_link_category_id('失联博客'));
+        if ($abnormal_id && !$lost_id) {
+            $success = false;
+            return false;
+        }
+
+        if ($abnormal_id && $abnormal_id !== $lost_id) {
+            $links = get_bookmarks(array('category' => $abnormal_id, 'hide_invisible' => false));
+            foreach ($links as $bookmark) {
+                $moved = wp_set_object_terms((int) $bookmark->link_id, array($lost_id), 'link_category', false);
+                if (is_wp_error($moved)) {
+                    $success = false;
+                }
+            }
+            if (!$success) {
+                return false;
+            }
+            $order = array_values(array_filter(dream2_mxin_link_category_order(), static function ($term_id) use ($abnormal_id) {
+                return (int) $term_id !== $abnormal_id;
+            }));
+            update_option('dream2_link_category_order', $order, false);
+            $managed = array_values(array_filter((array) get_option('dream2_link_managed_category_ids', array()), static function ($term_id) use ($abnormal_id) {
+                return (int) $term_id !== $abnormal_id;
+            }));
+            update_option('dream2_link_managed_category_ids', $managed, false);
+        }
+        update_option('dream2_options', dream2_mxin_strip_deprecated_options($options), false);
+        update_option('dream2_link_group_state_version', '3', false);
+        return true;
+    } finally {
+        delete_option($lock_key);
+    }
 }
 
 function dream2_mxin_strip_deprecated_options($options) {
@@ -1971,7 +2169,7 @@ function dream2_mxin_sanitize_options($input) {
             if ($name === 'load_progress') $value = dream2_mxin_normalize_load_progress($value);
             if ($name === 'enable_hitokoto') $value = dream2_mxin_normalize_hitokoto_mode($value);
             if ($field['type'] === 'email') $clean[$name] = sanitize_email($value);
-            elseif (in_array($name, array('link_friend_category', 'link_one_way_category', 'link_lost_category', 'link_abnormal_category'), true)) $clean[$name] = absint($value);
+            elseif (in_array($name, array('link_friend_category', 'link_one_way_category', 'link_lost_category'), true)) $clean[$name] = absint($value);
             elseif ($name === 'archivers_route_slug') $clean[$name] = sanitize_title($value) ?: 'archivers';
             elseif ($field['type'] === 'color') $clean[$name] = sanitize_hex_color($value);
             elseif ($field['type'] === 'date') $clean[$name] = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $value) ? (string) $value : '';
@@ -1982,7 +2180,7 @@ function dream2_mxin_sanitize_options($input) {
                 $number = $field['type'] === 'range' ? (int) $value : absint($value);
                 $minimum = isset($field['attributes']['min']) ? absint($field['attributes']['min']) : 0;
                 $maximum = isset($field['attributes']['max']) ? absint($field['attributes']['max']) : PHP_INT_MAX;
-                $allow_zero = !in_array($name, array('link_check_batch_size', 'link_check_failure_threshold', 'link_check_abnormal_days'), true);
+                $allow_zero = !in_array($name, array('link_check_batch_size', 'link_check_failure_threshold', 'link_one_way_notice_days', 'link_one_way_delete_days'), true);
                 $clean[$name] = $number === 0 && $allow_zero ? 0 : min($maximum, max($minimum, $number));
             }
             elseif ($field['type'] === 'select' || $field['type'] === 'radio') $clean[$name] = array_key_exists((string) $value, $field['choices']) ? (string) $value : (string) $field['default'];
@@ -1992,10 +2190,17 @@ function dream2_mxin_sanitize_options($input) {
     if (isset($clean['link_enable_comment']) && (string) $clean['link_enable_comment'] !== '1') {
         $clean['enable_link_application'] = '0';
     }
+    if (isset($clean['link_one_way_notice_days'], $clean['link_one_way_delete_days'])) {
+        $clean['link_one_way_delete_days'] = max(
+            absint($clean['link_one_way_notice_days']),
+            absint($clean['link_one_way_delete_days'])
+        );
+    }
     return $clean;
 }
 
 add_action('admin_init', function () {
+    dream2_mxin_migrate_removed_abnormal_link_group();
     dream2_mxin_handle_link_manager_action();
     $options = get_option('dream2_options', array());
     if (is_array($options)) {
@@ -2130,8 +2335,8 @@ function dream2_mxin_render_settings_page() {
         'enable_private_comment' => '关闭后仅禁止提交新的私密评论并隐藏前台复选框，已有私密评论仍保持私密。',
         'avatar_privacy' => '开启后将头像匿名缓存到本站，保护访客标识，但会增加服务器负担，推荐搭配 CDN 使用。关闭后恢复第三方直连，服务器负担较低，但部分头像地址可能暴露 QQ 号或账户标识。',
         'link_notify_recovered' => '友链恢复时会邮件通知对应博客管理员',
-        'link_notify_one_way' => '友链进入单向友链分组时会邮件通知对应博客管理员',
-        'link_notify_abnormal' => '友链进入异常分组时会邮件通知对应博客管理员',
+        'link_notify_one_way_reminder' => '单向友链达到提醒天数后通知对应博客管理员',
+        'link_notify_one_way_deleted' => '单向友链达到删除天数后通知对应博客管理员，并抄送网站管理员',
         'link_notify_lost' => '友链进入失联分组时会邮件通知对应博客管理员',
     );
     $font_preset_value = array_key_exists('font_preset', $options)
@@ -2270,11 +2475,11 @@ function dream2_mxin_render_link_settings_page() {
     $interval_choices = $registry['link_check_interval']['choices'] ?? array();
     $interval_label = $interval_choices[$interval_value] ?? '每天';
     $interval_days = array('daily' => 1, 'three_days' => 3, 'weekly' => 7)[$interval_value] ?? 1;
-    $abnormal_threshold = max(1, absint($options['link_check_failure_threshold'] ?? ($registry['link_check_failure_threshold']['default'] ?? 3)));
-    $lost_threshold_days = max(1, absint($options['link_check_abnormal_days'] ?? ($registry['link_check_abnormal_days']['default'] ?? 7)));
-    $one_way_rule = sprintf('反链连续检测失败 %d 次后迁移到单向友链', $abnormal_threshold);
-    $abnormal_rule = sprintf('自动检测周期（%s） × 异常博客阈值（%d 次）≈ %d 天', $interval_label, $abnormal_threshold, $interval_days * $abnormal_threshold);
-    $lost_rule = sprintf('失联博客阈值（%d 天）达到后，在下一轮自动检测中迁移；实际触发最多再等待 %d 天', $lost_threshold_days, $interval_days);
+    $failure_threshold = max(1, absint($options['link_check_failure_threshold'] ?? ($registry['link_check_failure_threshold']['default'] ?? 3)));
+    $notice_days = max(1, absint($options['link_one_way_notice_days'] ?? 1));
+    $delete_days = max(1, absint($options['link_one_way_delete_days'] ?? 7));
+    $one_way_rule = sprintf('反链连续检测失败 %d 次后迁移；进入 %d 天后提醒，进入 %d 天后删除并通知', $failure_threshold, $notice_days, $delete_days);
+    $lost_rule = sprintf('站点连续访问失败 %d 次后直接迁移到失联博客（按当前周期约 %d 天）', $failure_threshold, $interval_days * $failure_threshold);
     ?>
     <div class="wrap dream2-settings-wrap dream2-options-wrap dream2-link-manager" data-dream-link-ajax="<?php echo esc_url(admin_url('admin-ajax.php')); ?>" data-dream-link-nonce="<?php echo esc_attr(wp_create_nonce('dream2_link_check')); ?>">
     <header class="dream2-options-header"><h1>梦屿友链管理</h1><span class="dream2-version">版本 <?php echo esc_html(DREAM2_MXIN_VERSION); ?></span></header>
@@ -2301,7 +2506,7 @@ function dream2_mxin_render_link_settings_page() {
     <section class="dream2-settings-subgroup"><h3><?php echo esc_html($subgroup['label']); ?><?php if (($subgroup['label'] ?? '') === '自动检测') : ?><button type="button" class="dream2-help-tooltip dream2-cron-help" data-tooltip="点击查看自动检测配置说明" data-dream-link-cron-help aria-label="自动检测配置说明">?</button><?php endif; ?></h3><div class="dream2-option-group"><div class="dream2-option-grid">
     <?php foreach($subgroup['fields'] as $name): $field=$registry[$name]; $value=array_key_exists($name,$options)?$options[$name]:$field['default']; $option_attrs = $name === 'enable_link_application' ? ' data-dream-link-application-option' : ''; ?><div class="dream2-option<?php echo $field['type']==='textarea' ? ' dream2-option-wide' : ''; ?>"<?php echo $option_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><label for="dream2-<?php echo esc_attr($name); ?>"><strong><?php echo esc_html($field['label']); ?></strong></label>
     <?php if($field['type']==='radio'): $radio_value = !empty($field['boolean']) ? (filter_var($value,FILTER_VALIDATE_BOOLEAN)?'1':'0') : (string)$value; $is_link_application_disabled = $name === 'enable_link_application' && !filter_var($options['link_enable_comment'] ?? ($registry['link_enable_comment']['default'] ?? '1'), FILTER_VALIDATE_BOOLEAN); if ($is_link_application_disabled) $radio_value = '0'; ?><?php if ($is_link_application_disabled) : ?><input type="hidden" name="dream2_options[<?php echo esc_attr($name); ?>]" value="0"><?php endif; ?><div class="dream2-radio-group"><?php foreach($field['choices'] as $choice=>$choice_label): ?><label><input type="radio" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($choice); ?>" <?php checked($radio_value,(string)$choice); ?><?php echo $is_link_application_disabled ? ' disabled aria-disabled="true"' : ''; ?>> <span><?php echo esc_html($choice_label); ?></span></label><?php endforeach; ?><?php if ($name === 'enable_link_application') : ?><span class="description" data-dream-link-application-hint<?php echo $is_link_application_disabled ? '' : ' hidden'; ?>>需先开启友链页面评论</span><?php endif; ?></div>
-    <?php elseif(in_array($name, array('link_friend_category', 'link_one_way_category', 'link_lost_category', 'link_abnormal_category'), true)): ?><select id="dream2-<?php echo esc_attr($name); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]"><?php if ($name === 'link_one_way_category') : ?><option value="0" <?php selected((int) $value, 0); ?>>未设置</option><?php endif; ?><?php foreach($all_link_terms as $term): ?><option value="<?php echo esc_attr((string) $term->term_id); ?>" <?php selected((int) $value, (int) $term->term_id); ?>><?php echo esc_html($term->name); ?></option><?php endforeach; ?></select>
+    <?php elseif(in_array($name, array('link_friend_category', 'link_one_way_category', 'link_lost_category'), true)): ?><select id="dream2-<?php echo esc_attr($name); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]"><?php if ($name === 'link_one_way_category') : ?><option value="0" <?php selected((int) $value, 0); ?>>未设置</option><?php endif; ?><?php foreach($all_link_terms as $term): ?><option value="<?php echo esc_attr((string) $term->term_id); ?>" <?php selected((int) $value, (int) $term->term_id); ?>><?php echo esc_html($term->name); ?></option><?php endforeach; ?></select>
     <?php elseif($field['type']==='select'): ?><select id="dream2-<?php echo esc_attr($name); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]"><?php foreach($field['choices'] as $choice=>$choice_label): ?><option value="<?php echo esc_attr((string) $choice); ?>" <?php selected((string) $value, (string) $choice); ?>><?php echo esc_html($choice_label); ?></option><?php endforeach; ?></select>
     <?php elseif($field['type']==='number'): ?><input id="dream2-<?php echo esc_attr($name); ?>" class="small-text" type="number" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr((string) $value); ?>" min="<?php echo esc_attr((string) ($field['attributes']['min'] ?? 0)); ?>" max="<?php echo esc_attr((string) ($field['attributes']['max'] ?? '')); ?>" step="<?php echo esc_attr((string) ($field['attributes']['step'] ?? 1)); ?>">
     <?php elseif($field['type']==='textarea'): ?><textarea id="dream2-<?php echo esc_attr($name); ?>" class="large-text code" rows="6" name="dream2_options[<?php echo esc_attr($name); ?>]"><?php echo esc_textarea($value); ?></textarea>
@@ -2312,7 +2517,7 @@ function dream2_mxin_render_link_settings_page() {
     <section class="dream2-link-modal dream2-link-new" hidden><div class="dream2-link-modal-card"><h2>新增友链</h2><form id="dream2-link-new-form" method="post" action="<?php echo esc_url(dream2_mxin_link_manager_url()); ?>" class="dream2-link-form"><?php wp_nonce_field('dream2_link_manager'); ?><input type="hidden" name="dream2_link_manager_action" value="save_link">
     <label>网站名称<input class="regular-text" name="link_name" type="text" required></label><label>网站地址<input class="regular-text" name="link_url" type="url" required placeholder="https://example.com/"></label><label>网站图标<input class="regular-text" name="link_image" type="url"></label><label>管理员邮箱<input class="regular-text" name="admin_email" type="email"></label><label class="dream2-link-field-wide">网站介绍<textarea class="large-text" name="link_description" rows="3"></textarea></label><label>友链分组<select name="link_category"><option value="">未分组</option><?php foreach ($link_terms as $term) : ?><option value="<?php echo esc_attr((string) $term->term_id); ?>"><?php echo esc_html($term->name); ?></option><?php endforeach; ?></select></label><label>反链检测页（可选）<input class="regular-text" name="backlink_url" type="url" placeholder="留空则不检测反链"></label></form><div class="dream2-link-modal-footer"><button type="button" class="button" data-dream-link-close>取消</button><button type="submit" class="button button-primary" form="dream2-link-new-form">新增友链</button></div></div></section>
     <section class="dream2-link-modal dream2-link-new-category-modal" hidden><div class="dream2-link-modal-card dream2-link-action-card"><h2>新建分类</h2><form id="dream2-link-new-category-form" method="post" action="<?php echo esc_url(dream2_mxin_link_manager_url()); ?>" class="dream2-link-form"><?php wp_nonce_field('dream2_link_manager'); ?><input type="hidden" name="dream2_link_manager_action" value="save_category"><label>分类名称<input class="regular-text" name="link_category_name" type="text" required placeholder="例如：技术支持"></label></form><div class="dream2-link-modal-footer"><button type="button" class="button" data-dream-link-close>取消</button><button type="submit" class="button button-primary" form="dream2-link-new-category-form">创建分类</button></div></div></section>
-    <section class="dream2-link-modal dream2-link-cron-help-modal" hidden><div class="dream2-link-modal-card dream2-link-action-card"><h2>自动检测配置说明</h2><div class="dream2-link-modal-body dream2-cron-help-content"><p><strong>单向友链：</strong>站点可以访问，但反链页异常或未找到本站链接。</p><code><?php echo esc_html($one_way_rule); ?></code><p><strong>异常博客阈值：</strong>友链站点连续访问失败指定次数后迁移到异常博客。</p><code><?php echo esc_html($abnormal_rule); ?></code><p><strong>失联博客阈值：</strong>博客处于异常且持续无法访问达到指定天数后迁移到失联博客。</p><code><?php echo esc_html($lost_rule); ?></code><p><strong>恢复规则：</strong>站点与反链均正常时恢复到友情链接；站点恢复但反链仍异常时迁移到单向友链。手动检测只更新即时结果，不推进自动迁移计数。</p><p>WordPress Cron 默认需要网站有访问才会触发。想让友链自动检测稳定执行，可以改为服务器系统 Cron 触发。</p><p>在 <code>wp-config.php</code> 添加：</p><code>define('DISABLE_WP_CRON', true);</code><p>然后在服务器系统 Cron 添加定时任务：</p><code><?php echo esc_html($system_cron_command); ?></code></div><div class="dream2-link-modal-footer"><button type="button" class="button button-primary" data-dream-link-close>知道了</button></div></div></section>
+    <section class="dream2-link-modal dream2-link-cron-help-modal" hidden><div class="dream2-link-modal-card dream2-link-action-card"><h2>自动检测配置说明</h2><div class="dream2-link-modal-body dream2-cron-help-content"><p><strong>单向友链：</strong>站点可以访问，但反链页异常或未找到本站链接。</p><code><?php echo esc_html($one_way_rule); ?></code><p><strong>失联博客：</strong>友链站点连续访问失败达到阈值后直接迁移。</p><code><?php echo esc_html($lost_rule); ?></code><p><strong>恢复规则：</strong>站点与反链均正常时恢复到友情链接；失联站点恢复但反链仍异常时迁移到单向友链。手动检测只更新即时结果，不推进自动迁移计数。</p><p>提醒与删除在自动检测批次中执行，实际触发时间可能晚于配置天数，最长受自动检测周期影响。</p><p>WordPress Cron 默认需要网站有访问才会触发。想让友链自动检测稳定执行，可以改为服务器系统 Cron 触发。</p><p>在 <code>wp-config.php</code> 添加：</p><code>define('DISABLE_WP_CRON', true);</code><p>然后在服务器系统 Cron 添加定时任务：</p><code><?php echo esc_html($system_cron_command); ?></code></div><div class="dream2-link-modal-footer"><button type="button" class="button button-primary" data-dream-link-close>知道了</button></div></div></section>
     <section class="dream2-link-modal dream2-link-sort-modal" hidden><div class="dream2-link-modal-card dream2-link-action-card"><h2>调整排序</h2><form method="post" action="<?php echo esc_url(dream2_mxin_link_manager_url()); ?>"><?php wp_nonce_field('dream2_link_manager'); ?><input type="hidden" name="dream2_link_manager_action" value="sort_groups"><div class="dream2-link-modal-body dream2-link-sort-list" data-dream-link-sort-list><?php foreach ($link_terms as $term) : $group_links = $bookmarks_by_term[(int) $term->term_id] ?? array(); ?><div class="dream2-link-sort-item dream2-link-sort-link" draggable="true"><span class="dashicons dashicons-menu"></span><strong><?php echo esc_html($term->name); ?></strong><em><?php echo esc_html((string) count($group_links)); ?> 条</em><input type="hidden" name="link_category_order[]" value="<?php echo esc_attr((string) $term->term_id); ?>"></div><?php endforeach; ?></div><p class="submit dream2-link-submit"><button type="button" class="button" data-dream-link-close>取消</button><button type="submit" class="button button-primary">保存</button></p></form></div></section>
     <section class="dream2-link-modal dream2-link-import-modal" hidden><div class="dream2-link-modal-card dream2-link-action-card"><h2>批量导入</h2><div class="dream2-link-modal-body"><textarea class="large-text code dream2-link-import-textarea" rows="9"></textarea></div><p class="submit dream2-link-submit"><button type="button" class="button" data-dream-link-close>取消</button><button type="button" class="button button-primary" data-dream-link-close>导入</button></p></div></section>
     <section class="dream2-link-modal dream2-link-check-modal" hidden><div class="dream2-link-modal-card dream2-link-action-card"><h2>检测全部</h2><div class="dream2-link-modal-body dream2-link-check-panel"><?php foreach ($link_terms as $term) : ?><div class="dream2-link-check-row" data-dream-link-check-term="<?php echo esc_attr((string) $term->term_id); ?>"><strong><?php echo esc_html($term->name); ?></strong><span>等待检测</span></div><?php endforeach; ?></div><p class="submit dream2-link-submit"><button type="button" class="button" data-dream-link-close>关闭</button></p></div></section>

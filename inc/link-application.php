@@ -107,7 +107,7 @@ function dream2_mxin_link_application_upsert_link($site_name, $site_url, $avatar
         'backlink_failures'  => 0,
         'backlink_first_failed_at' => '',
         'one_way_notified_at' => '',
-        'abnormal_notified_at' => '',
+        'one_way_entered_at' => '',
         'lost_notified_at'   => '',
     );
     $link_id = dream2_mxin_link_application_existing_link_id($site_url);
