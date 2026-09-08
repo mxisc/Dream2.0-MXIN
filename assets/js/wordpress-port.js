@@ -760,15 +760,138 @@
         });
     });
 
+    function commentResponseMessage(html, fallback) {
+        if (!html || !window.DOMParser) return fallback;
+        var responseDocument = new DOMParser().parseFromString(html, 'text/html');
+        var message = responseDocument.querySelector('#error-page p, .wp-die-message, body');
+        return message && message.textContent.trim() ? message.textContent.trim() : fallback;
+    }
+
+    function showCommentSubmitNotice(form, type, message) {
+        var respond = form.closest('#respond') || form.parentNode;
+        var comments = form.closest('#comments') || respond.parentNode;
+        var notice = comments.querySelector('.dream-comment-submit-notice');
+        if (!notice) {
+            notice = document.createElement('div');
+            respond.insertAdjacentElement('beforebegin', notice);
+        }
+        notice.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        notice.className = 'dream-comment-submit-notice is-' + type;
+        notice.textContent = message;
+        return notice;
+    }
+
+    $(document).on('click', '.comment-reply-link, #cancel-comment-reply-link', function () {
+        var comments = this.closest('#comments');
+        var notice = comments && comments.querySelector('.dream-comment-submit-notice');
+        if (notice) notice.remove();
+    });
+
+    function cleanCommentResponseUrl(url) {
+        var cleanUrl = new URL(url, window.location.href);
+        cleanUrl.searchParams.delete('dream2_comment');
+        cleanUrl.searchParams.delete('dream2_comment_status');
+        return cleanUrl.pathname + cleanUrl.search + cleanUrl.hash;
+    }
+
+    function highlightPublishedComment(comment) {
+        if (!comment) return;
+        var badge = document.createElement('span');
+        badge.className = 'dream-comment-published-badge';
+        badge.setAttribute('role', 'status');
+        badge.textContent = '评论已发布';
+        comment.classList.add('is-newly-published');
+        var meta = comment.querySelector(':scope > .media-content > .comment-meta');
+        (meta || comment.querySelector(':scope > .media-content') || comment).appendChild(badge);
+        window.setTimeout(function () {
+            if (comment.isConnected) comment.classList.add('is-published-ending');
+        }, 4500);
+        window.setTimeout(function () {
+            comment.classList.remove('is-newly-published', 'is-published-ending');
+            badge.remove();
+        }, 5000);
+    }
+
     $(document).on('submit', '.dream-comment-form', function (event) {
-        var editor = this.querySelector('.dream-comment-rich-editor');
-        var textarea = this.querySelector('.dream-comment-source');
+        var form = this;
+        var editor = form.querySelector('.dream-comment-rich-editor');
+        var textarea = form.querySelector('.dream-comment-source');
         if (!editor || !textarea) return;
         syncCommentEditor(editor);
         if (!editor.textContent.trim()) {
             event.preventDefault();
             editor.focus();
+            return;
         }
+        if (!window.Dream2WP || !Dream2WP.enablePjax || !window.fetch || !window.FormData || !window.DOMParser || !window.URL) {
+            return;
+        }
+
+        event.preventDefault();
+        if (form.dataset.dreamSubmitting === '1') return;
+
+        var submitter = event.originalEvent && event.originalEvent.submitter
+            ? event.originalEvent.submitter
+            : form.querySelector('[type="submit"]');
+        var originalHtml = submitter ? submitter.innerHTML : '';
+        var data = new FormData(form);
+        data.append('dream2_ajax_comment', '1');
+        form.dataset.dreamSubmitting = '1';
+        form.setAttribute('aria-busy', 'true');
+        if (submitter) {
+            submitter.disabled = true;
+            submitter.textContent = '正在提交...';
+        }
+
+        window.fetch(form.action, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: data
+        }).then(function (response) {
+            return response.text().then(function (html) {
+                if (!response.ok) {
+                    throw new Error(commentResponseMessage(html, '评论提交失败，请稍后重试。'));
+                }
+                return { html: html, url: response.url || window.location.href };
+            });
+        }).then(function (result) {
+            var nextDocument = new DOMParser().parseFromString(result.html, 'text/html');
+            var currentComments = document.getElementById('comments');
+            var nextComments = nextDocument.getElementById('comments');
+            if (!currentComments || !nextComments) {
+                throw new Error('评论已提交，但评论区刷新失败，请刷新页面查看。');
+            }
+
+            var responseUrl = new URL(result.url, window.location.href);
+            var commentId = responseUrl.searchParams.get('dream2_comment');
+            var status = responseUrl.searchParams.get('dream2_comment_status');
+            if (document.activeElement && form.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+            var selection = window.getSelection();
+            if (selection) selection.removeAllRanges();
+            currentComments.replaceWith(nextComments);
+            window.history.replaceState(window.history.state, '', cleanCommentResponseUrl(responseUrl.href));
+            document.dispatchEvent(new CustomEvent('dream2:page-loaded'));
+
+            var nextForm = nextComments.querySelector('.dream-comment-form');
+            var notice = nextComments;
+            if (nextForm && status !== 'approved') {
+                notice = showCommentSubmitNotice(nextForm, 'info', '评论已提交，正在等待审核。');
+            }
+            var target = commentId ? document.getElementById('comment-' + commentId) : null;
+            if (status === 'approved') highlightPublishedComment(target);
+            (target || notice).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }).catch(function (error) {
+            showCommentSubmitNotice(form, 'error', error && error.message ? error.message : '评论提交失败，请稍后重试。');
+            delete form.dataset.dreamSubmitting;
+            form.removeAttribute('aria-busy');
+            if (submitter) {
+                submitter.disabled = false;
+                submitter.innerHTML = originalHtml;
+            }
+        });
     });
 
     function showLinkApplicationNotice(form, type, message) {

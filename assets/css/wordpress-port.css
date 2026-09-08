@@ -1324,6 +1324,52 @@ html.night .dream-search-footer kbd {
     margin: 1rem 0;
 }
 
+.dream2-wordpress .dream-comment.is-newly-published > .media-content {
+    position: relative;
+    border-radius: .5rem;
+    background: color-mix(in srgb, var(--theme) 5%, transparent);
+    transition: background-color .5s ease;
+}
+
+.dream2-wordpress .dream-comment.is-newly-published > .media-content::after {
+    content: "";
+    position: absolute;
+    inset: -.45rem;
+    border: 1px solid var(--theme);
+    border-radius: .6rem;
+    opacity: 1;
+    transition: opacity .5s ease;
+    pointer-events: none;
+}
+
+.dream2-wordpress .dream-comment.is-newly-published.is-published-ending > .media-content {
+    background: transparent;
+}
+
+.dream2-wordpress .dream-comment.is-newly-published.is-published-ending > .media-content::after {
+    opacity: 0;
+}
+
+.dream2-wordpress .dream-comment-published-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: .5rem;
+    padding: .12rem .45rem;
+    border-radius: 999px;
+    color: var(--theme);
+    background: color-mix(in srgb, var(--theme) 14%, transparent);
+    font-size: .72rem;
+    font-weight: 600;
+    line-height: 1.4;
+    vertical-align: middle;
+    transition: opacity .5s ease;
+    pointer-events: none;
+}
+
+.dream2-wordpress .dream-comment.is-published-ending .dream-comment-published-badge {
+    opacity: 0;
+}
+
 .dream2-wordpress .comment-list .children {
     grid-column: 1 / -1;
     width: auto;
@@ -1400,6 +1446,24 @@ html.night .dream-search-footer kbd {
 
 .dream2-wordpress .dream-comment-form > * {
     min-width: 0;
+}
+
+.dream2-wordpress .dream-comment-submit-notice {
+    display: inline-flex;
+    width: fit-content;
+    margin: 0 0 .75rem;
+    padding: .65rem .8rem;
+    border: 1px solid color-mix(in srgb, var(--theme) 32%, transparent);
+    border-radius: .5rem;
+    color: var(--main);
+    font-size: .88rem;
+    background: color-mix(in srgb, var(--theme) 9%, var(--background));
+}
+
+.dream2-wordpress .dream-comment-submit-notice.is-error {
+    border-color: rgba(231, 76, 60, .35);
+    color: #e74c3c;
+    background: rgba(231, 76, 60, .08);
 }
 
 .dream2-wordpress .dream-comment-form .dream-comment-editor,
@@ -1638,8 +1702,8 @@ html.night .dream-search-footer kbd {
 .dream2-wordpress .dream-comment-rich-editor .dream-comment-emoji-image,
 .dream2-wordpress .comment-content .dream-comment-emoji-rendered {
     display: inline-block;
-    width: 2.3em;
-    height: 2.3em;
+    width: 4em;
+    height: 4em;
     margin: 0 .12em;
     object-fit: contain;
     vertical-align: middle;

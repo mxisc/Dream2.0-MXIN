@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DREAM2_MXIN_VERSION', '0.7.54');
+define('DREAM2_MXIN_VERSION', '0.7.55');
 
 function dream2_mxin_enhancer_active($feature = '') {
     return (bool) apply_filters('dream2_mxin_enhancer_feature_active', defined('DREAM2_MXIN_ENHANCER_VERSION'), $feature);
@@ -27,6 +27,19 @@ add_filter('comments_open', function ($open, $post_id) {
     }
     return $open;
 }, 10, 2);
+
+// Keep comment creation in WordPress' native pipeline while exposing the result
+// to the PJAX client through the normal post-comment redirect.
+add_filter('comment_post_redirect', function ($location, $comment) {
+    if (!isset($_POST['dream2_ajax_comment']) || '1' !== wp_unslash($_POST['dream2_ajax_comment'])) {
+        return $location;
+    }
+
+    return add_query_arg(array(
+        'dream2_comment'        => (int) $comment->comment_ID,
+        'dream2_comment_status' => ('1' === (string) $comment->comment_approved) ? 'approved' : 'moderation',
+    ), $location);
+}, 99, 2);
 
 require_once get_template_directory() . '/inc/mail-log.php';
 require_once get_template_directory() . '/inc/theme-settings.php';
@@ -439,6 +452,8 @@ function dream2_mxin_enqueue_assets() {
     }
     if (is_singular() && comments_open() && get_option('thread_comments')) {
         wp_enqueue_script('comment-reply');
+        wp_script_add_data('comment-reply', 'strategy', 'defer');
+        wp_script_add_data('comment-reply', 'fetchpriority', 'auto');
     }
 
     wp_localize_script('dream2-port', 'Dream2WP', array(

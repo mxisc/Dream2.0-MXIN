@@ -2453,6 +2453,7 @@ function dream2_mxin_render_link_settings_page() {
     $link_config_subgroups = dream2_mxin_prepare_settings_subgroups(dream2_mxin_link_settings_subgroups(), $link_config_fields);
     $link_terms = dream2_mxin_friend_link_terms();
     $link_term_ids = array_map('intval', wp_list_pluck($link_terms, 'term_id'));
+    $lost_term_id = absint(dream2_get('link_lost_category', dream2_mxin_default_link_category_id('失联博客')));
     $bookmarks = $link_term_ids ? get_bookmarks(array(
         'category'       => implode(',', $link_term_ids),
         'orderby'        => 'name',
@@ -2538,7 +2539,10 @@ function dream2_mxin_render_link_settings_page() {
                 $extra = dream2_mxin_link_extra($bookmark);
                 $term_ids = wp_get_object_terms((int) $bookmark->link_id, 'link_category', array('fields' => 'ids'));
                 $term_id = is_wp_error($term_ids) || empty($term_ids) ? 0 : (int) $term_ids[0];
-                $avatar = $bookmark->link_image ?: dream2_get('links_default_avatar', dream2_mxin_asset('img/avatar.svg'));
+                $is_lost = $lost_term_id && $term_id === $lost_term_id;
+                $avatar = $is_lost
+                    ? dream2_mxin_asset('img/avatar.svg')
+                    : ($bookmark->link_image ?: dream2_get('links_default_avatar', dream2_mxin_asset('img/avatar.svg')));
                 $verification = $extra['verification'];
                 $access_labels = array('pending' => '待检', 'success' => '正常', 'error' => '异常');
                 $backlink_labels = array('pending' => '反链待检', 'success' => '反链正常', 'missing' => '无反链', 'error' => '反链异常', 'skip' => '未配置反链');

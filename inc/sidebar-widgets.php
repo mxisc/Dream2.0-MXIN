@@ -466,7 +466,7 @@ function dream2_mxin_meting_api_source($module) {
     if (str_contains($api, 'api.qijieya.cn/meting/')) {
         return 'qijieya';
     }
-    if (str_contains($api, 'api.mxin.moe/api/v1/meting')) {
+    if (str_contains($api, 'api.mxin.me/api/v1/meting')) {
         return 'mxin';
     }
     if ($api !== '' && !str_contains($api, 'api.i-meto.com/meting/api')) {
@@ -481,7 +481,7 @@ function dream2_mxin_meting_api_url($module) {
         return 'https://api.qijieya.cn/meting/?server=:server&type=:type&id=:id';
     }
     if ($source === 'mxin') {
-        return 'https://api.mxin.moe/api/v1/meting?server=:server&type=:type&id=:id&r=:r';
+        return 'https://api.mxin.me/api/v1/meting?server=:server&type=:type&id=:id&r=:r';
     }
     if ($source === 'custom') {
         return (string) dream2_mxin_widget_module_value($module, 'meting_api', '');
