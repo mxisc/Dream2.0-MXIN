@@ -32,6 +32,186 @@
     window.DreamConfig.show_img_name = !!Dream2WP.showImageName;
     window.DreamConfig.load_progress = Dream2WP.loadProgress || 'none';
     document.documentElement.classList.toggle('dream-load-progress-enabled', window.DreamConfig.load_progress !== 'none');
+    var articleSummaryRequests = {};
+
+    function articleSummaryJson(article, signal) {
+        return window.fetch(article.dataset.dreamArticleSummaryEndpoint, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Dream2-Nonce': article.dataset.dreamArticleSummaryNonce,
+                'X-WP-Nonce': String(Dream2WP.aiSearchRestNonce || '')
+            },
+            body: JSON.stringify({ post_id: Number(article.dataset.dreamArticleSummaryPost) }),
+            signal: signal
+        }).then(function (response) {
+            return response.json().catch(function () { return {}; }).then(function (data) {
+                if (!response.ok || !data.summary) throw new Error(data.message || '文章总结暂时不可用。');
+                return { summary: String(data.summary), cached: !!data.cached };
+            });
+        });
+    }
+
+    function articleSummaryStream(article, signal, onProgress) {
+        if (!article.dataset.dreamArticleSummaryStreamEndpoint || !window.TextDecoder || !window.URLSearchParams) {
+            return articleSummaryJson(article, signal);
+        }
+        var body = new URLSearchParams({
+            action: 'dream2_article_summary_stream',
+            post_id: article.dataset.dreamArticleSummaryPost,
+            _wpnonce: article.dataset.dreamArticleSummaryNonce
+        });
+        return window.fetch(article.dataset.dreamArticleSummaryStreamEndpoint, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Accept': 'text/event-stream' },
+            body: body,
+            signal: signal
+        }).then(async function (response) {
+            if (!response.ok || !response.body || !response.body.getReader) {
+                return articleSummaryJson(article, signal);
+            }
+            var reader = response.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = '';
+            var partial = '';
+            var complete = '';
+            var cached = false;
+            try {
+                while (true) {
+                    var result = await reader.read();
+                    if (result.done) break;
+                    buffer += decoder.decode(result.value, { stream: true }).replace(/\r/g, '');
+                    var boundary;
+                    while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+                        var frame = buffer.slice(0, boundary);
+                        buffer = buffer.slice(boundary + 2);
+                        var event = '';
+                        var dataLines = [];
+                        frame.split('\n').forEach(function (line) {
+                            if (line.indexOf('event:') === 0) event = line.slice(6).trim();
+                            if (line.indexOf('data:') === 0) dataLines.push(line.slice(5).trimStart());
+                        });
+                        var data;
+                        try { data = JSON.parse(dataLines.join('\n')); } catch (error) { data = {}; }
+                        if (event === 'delta' && typeof data.text === 'string') {
+                            partial += data.text;
+                            onProgress(partial);
+                        } else if (event === 'done' && typeof data.summary === 'string') {
+                            complete = data.summary;
+                            cached = !!data.cached;
+                        } else if (event === 'error') {
+                            throw new Error(data.message || '文章总结暂时不可用。');
+                        }
+                    }
+                }
+            } finally {
+                reader.releaseLock();
+            }
+            if (!complete) throw new Error('文章总结未完整生成。');
+            return { summary: complete, cached: cached };
+        });
+    }
+
+    window.Dream2ArticleSummary = {
+        get: function (article, onProgress) {
+            if (!article || !article.dataset.dreamArticleSummaryPost) return Promise.reject(new Error('当前没有可总结的文章。'));
+            var postId = article.dataset.dreamArticleSummaryPost;
+            var existing = articleSummaryRequests[postId];
+            if (existing && existing.article === article) {
+                if (typeof onProgress === 'function') {
+                    existing.listeners.push(onProgress);
+                    if (existing.partial) onProgress(existing.partial);
+                }
+                return existing.promise;
+            }
+            var controller = new AbortController();
+            var timeout = window.setTimeout(function () { controller.abort(); }, 70000);
+            var record = { article: article, promise: null, partial: '', target: '', listeners: typeof onProgress === 'function' ? [onProgress] : [], frame: 0, lastFrame: 0, characterBudget: 0, streamed: false };
+            function publish(partial) {
+                record.partial = partial;
+                record.listeners.forEach(function (listener) { listener(partial); });
+            }
+            function advance(timestamp) {
+                var elapsed = record.lastFrame ? Math.min(timestamp - record.lastFrame, 100) : 16;
+                record.lastFrame = timestamp;
+                record.characterBudget += elapsed * 0.055;
+                var characters = Array.from(record.target);
+                var shown = Array.from(record.partial).length;
+                var next = Math.min(characters.length, shown + Math.floor(record.characterBudget));
+                if (next > shown) {
+                    record.characterBudget -= next - shown;
+                    publish(characters.slice(0, next).join(''));
+                }
+                record.frame = next < characters.length ? window.requestAnimationFrame(advance) : 0;
+            }
+            function queue(partial) {
+                record.streamed = true;
+                record.target = partial;
+                if (!record.frame) record.frame = window.requestAnimationFrame(advance);
+            }
+            var request = articleSummaryStream(article, controller.signal, queue).then(async function (result) {
+                var summary = result.summary;
+                if (result.cached) {
+                    await new Promise(function (resolve) { window.setTimeout(resolve, 850); });
+                    queue(summary);
+                }
+                if (!record.streamed) {
+                    publish(summary);
+                    return summary;
+                }
+                if (summary.indexOf(record.partial) !== 0) {
+                    publish(summary);
+                    return summary;
+                }
+                record.target = summary;
+                if (!record.frame && record.partial !== summary) record.frame = window.requestAnimationFrame(advance);
+                return new Promise(function (resolve) {
+                    function finish() {
+                        if (record.partial === summary) resolve(summary);
+                        else window.requestAnimationFrame(finish);
+                    }
+                    finish();
+                });
+            }).catch(function (error) {
+                if (record.frame) window.cancelAnimationFrame(record.frame);
+                delete articleSummaryRequests[postId];
+                throw error && error.name === 'AbortError' ? new Error('文章总结超时，请重试。') : error;
+            }).finally(function () { window.clearTimeout(timeout); });
+            record.promise = request;
+            articleSummaryRequests[postId] = record;
+            return request;
+        }
+    };
+
+    function initializeArticleSummary() {
+        var article = document.querySelector('article[data-dream-article-summary-post]');
+        var panel = article && article.querySelector('.dream-article-summary');
+        if (!panel) return;
+        var text = panel.querySelector('[data-dream-article-summary-text]');
+        var retry = panel.querySelector('[data-dream-article-summary-retry]');
+        var load = function () {
+            text.textContent = '正在整理要点…';
+            retry.hidden = true;
+            window.Dream2ArticleSummary.get(article, function (partial) {
+                if (article.isConnected) text.textContent = partial;
+            }).then(function (summary) {
+                if (!article.isConnected) return;
+                text.textContent = summary;
+                document.dispatchEvent(new CustomEvent('dream2:article-summary-ready', { detail: { postId: Number(article.dataset.dreamArticleSummaryPost), summary: summary } }));
+            }).catch(function () {
+                if (!article.isConnected) return;
+                text.textContent = '文章总结暂时不可用。';
+                retry.hidden = false;
+            });
+        };
+        retry.addEventListener('click', load);
+        load();
+    }
+    document.addEventListener('dream2:page-loaded', initializeArticleSummary);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initializeArticleSummary, { once: true });
+    else initializeArticleSummary();
     window.DreamConfig.code_fold_line = parseInt(Dream2WP.codeFoldLine || 0, 10);
     window.DreamConfig.img_fold_height = parseInt(Dream2WP.imageFoldHeight || 0, 10);
     if (Dream2WP.metingApi) {
@@ -1144,6 +1324,8 @@
 
     var searchTimer = null;
     var searchActiveIndex = -1;
+    var aiSearchAbort = null;
+    var aiSearchQuestion = '';
     var searchCommands = {
         help: function () {
             return { title: '可用命令', detail: 'help · whoami · status · root' };
@@ -1229,7 +1411,282 @@
         updateSearchActive(0);
     }
 
+    function aiSearchElements() {
+        var card = document.querySelector('.dream-search-card');
+        return card ? {
+            card: card,
+            form: card.querySelector('.search-form'),
+            input: card.querySelector('.search-field'),
+            notice: card.querySelector('[data-dream-ai-notice]'),
+            panel: card.querySelector('[data-dream-ai-panel]'),
+            response: card.querySelector('[data-dream-ai-response]'),
+            submit: card.querySelector('[data-dream-ai-submit]')
+        } : null;
+    }
+
+    function setAiSearchNotice(elements, message) {
+        if (!elements || !elements.notice) return;
+        elements.notice.textContent = message || '';
+        elements.notice.hidden = !message;
+    }
+
+    function setAiSearchLoading(elements, loading) {
+        if (!elements) return;
+        elements.card.classList.toggle('is-ai-loading', loading);
+        elements.card.setAttribute('aria-busy', loading ? 'true' : 'false');
+        if (elements.submit) elements.submit.disabled = loading;
+        if (loading && elements.panel) elements.panel.hidden = false;
+        if (elements.response && loading) {
+            elements.response.hidden = false;
+            elements.response.textContent = '';
+            var loadingText = document.createElement('p');
+            loadingText.className = 'dream-ai-search-loading';
+            loadingText.textContent = '正在扫描站内档案';
+            elements.response.appendChild(loadingText);
+        }
+    }
+
+    function cancelAiSearch(elements, hideResponse) {
+        if (aiSearchAbort) {
+            aiSearchAbort.abort();
+            aiSearchAbort = null;
+        }
+        setAiSearchLoading(elements, false);
+        if (hideResponse && elements && elements.response) elements.response.hidden = true;
+    }
+
+    function setAiSearchMode(mode, focusInput) {
+        var elements = aiSearchElements();
+        if (!elements || !elements.input) return;
+        var aiMode = mode === 'ai';
+        elements.card.classList.toggle('is-ai-mode', aiMode);
+        elements.card.querySelectorAll('[data-dream-search-mode]').forEach(function (button) {
+            var active = button.dataset.dreamSearchMode === mode;
+            button.classList.toggle('is-active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        elements.input.placeholder = aiMode
+            ? '向站内内容提问'
+            : (elements.input.dataset.dreamSearchPlaceholder || '');
+        if (aiMode) {
+            elements.input.maxLength = Number(Dream2WP.aiSearchMaxLength || 300);
+        } else {
+            elements.input.removeAttribute('maxlength');
+            cancelAiSearch(elements, false);
+        }
+        if (elements.panel) elements.panel.hidden = !aiMode;
+        if (focusInput !== false) {
+            window.requestAnimationFrame(function () { elements.input.focus(); });
+        }
+    }
+
+    function renderAiSearchAnswer(elements, data) {
+        if (!elements || !elements.response) return;
+        elements.response.textContent = '';
+        elements.response.hidden = false;
+
+        var answer = document.createElement('section');
+        answer.className = 'dream-ai-search-answer';
+        var heading = document.createElement('h3');
+        heading.innerHTML = '<i class="ri-sparkling-2-line" aria-hidden="true"></i><span>AI 回答</span>';
+        var copy = document.createElement('p');
+        copy.textContent = String(data.answer || '');
+        answer.appendChild(heading);
+        answer.appendChild(copy);
+        elements.response.appendChild(answer);
+
+        var sources = Array.isArray(data.sources) ? data.sources : [];
+        if (!sources.length) return;
+        var sourceSection = document.createElement('section');
+        sourceSection.className = 'dream-ai-search-sources';
+        var sourceHeading = document.createElement('h3');
+        sourceHeading.textContent = '参考来源';
+        var sourceList = document.createElement('ol');
+        sources.forEach(function (source) {
+            if (!source || !source.url) return;
+            var item = document.createElement('li');
+            var link = document.createElement('a');
+            link.href = String(source.url);
+            link.textContent = String(source.title || source.url);
+            var detail = document.createElement('small');
+            detail.textContent = String(source.excerpt || '');
+            item.appendChild(link);
+            if (detail.textContent) item.appendChild(detail);
+            sourceList.appendChild(item);
+        });
+        sourceSection.appendChild(sourceHeading);
+        sourceSection.appendChild(sourceList);
+        elements.response.appendChild(sourceSection);
+    }
+
+    function fallbackToSiteSearch(elements, message) {
+        setAiSearchMode('search');
+        setAiSearchNotice(elements, (message || 'AI 暂时不可用。') + ' 已切换到站内搜索。');
+        elements.input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function submitAiSearch() {
+        var elements = aiSearchElements();
+        if (!elements || !elements.card.classList.contains('is-ai-mode') || !Dream2WP.aiSearchEnabled) return;
+        var question = elements.input.value.trim();
+        var maxLength = Number(Dream2WP.aiSearchMaxLength || 300);
+        setAiSearchNotice(elements, '');
+        if (question.length < 2 || question.length > maxLength) {
+            setAiSearchNotice(elements, '问题长度需为 2 至 ' + maxLength + ' 个字符。');
+            return;
+        }
+
+        cancelAiSearch(elements, false);
+        var requestController = new AbortController();
+        var requestTimedOut = false;
+        aiSearchAbort = requestController;
+        aiSearchQuestion = question;
+        setAiSearchLoading(elements, true);
+        var slowTimer = window.setTimeout(function () {
+            var loadingText = elements.response && elements.response.querySelector('.dream-ai-search-loading');
+            if (aiSearchAbort === requestController && loadingText) loadingText.textContent = '正在同步世界线';
+        }, 6000);
+        var requestTimeout = window.setTimeout(function () {
+            requestTimedOut = true;
+            requestController.abort();
+        }, 35000);
+        window.fetch(String(Dream2WP.aiSearchEndpoint || ''), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Dream2-Nonce': String(Dream2WP.aiSearchNonce || ''),
+                'X-WP-Nonce': String(Dream2WP.aiSearchRestNonce || '')
+            },
+            body: JSON.stringify({ question: question }),
+            signal: requestController.signal
+        }).then(function (response) {
+            return response.json().catch(function () { return {}; }).then(function (payload) {
+                if (!response.ok) throw new Error(payload.message || 'AI 暂时不可用。');
+                return payload;
+            });
+        }).then(function (data) {
+            if (aiSearchAbort !== requestController || elements.input.value.trim() !== aiSearchQuestion) return;
+            renderAiSearchAnswer(elements, data);
+        }).catch(function (error) {
+            if (error && error.name === 'AbortError') {
+                if (requestTimedOut) fallbackToSiteSearch(elements, 'AI 响应超时。');
+                return;
+            }
+            fallbackToSiteSearch(elements, error && error.message ? error.message : '');
+        }).finally(function () {
+            window.clearTimeout(slowTimer);
+            window.clearTimeout(requestTimeout);
+            if (aiSearchAbort === requestController) {
+                aiSearchAbort = null;
+                setAiSearchLoading(elements, false);
+            }
+        });
+    }
+
+    function initializeAiSearch() {
+        if (!Dream2WP.aiSearchEnabled) return;
+        var card = document.querySelector('.dream-search-card');
+        var form = card && card.querySelector('.search-form');
+        var input = form && form.querySelector('.search-field');
+        if (!card || !form || !input || card.dataset.dreamAiReady === '1') return;
+        card.dataset.dreamAiReady = '1';
+        input.dataset.dreamSearchPlaceholder = input.placeholder || '';
+
+        var tabs = document.createElement('div');
+        tabs.className = 'dream-ai-search-tabs';
+        tabs.setAttribute('role', 'group');
+        tabs.setAttribute('aria-label', '搜索模式');
+        tabs.innerHTML = '<button type="button" class="is-active" aria-pressed="true" data-dream-search-mode="ai"><i class="ri-sparkling-2-line" aria-hidden="true"></i><span>AI 问答</span></button>' +
+            '<button type="button" aria-pressed="false" data-dream-search-mode="search"><i class="ri-search-line" aria-hidden="true"></i><span>站内搜索</span></button>';
+        card.insertBefore(tabs, form);
+
+        var submit = document.createElement('button');
+        submit.type = 'button';
+        submit.className = 'dream-ai-search-submit';
+        submit.dataset.dreamAiSubmit = '1';
+        submit.setAttribute('aria-label', '发送问题');
+        submit.innerHTML = '<i class="ri-arrow-up-line" aria-hidden="true"></i>';
+        form.appendChild(submit);
+
+        var notice = document.createElement('p');
+        notice.className = 'dream-ai-search-notice';
+        notice.dataset.dreamAiNotice = '1';
+        notice.setAttribute('role', 'status');
+        notice.hidden = true;
+        form.insertAdjacentElement('afterend', notice);
+
+        var panel = document.createElement('div');
+        panel.className = 'dream-ai-search-panel';
+        panel.dataset.dreamAiPanel = '1';
+        panel.hidden = true;
+        var response = document.createElement('div');
+        response.className = 'dream-ai-search-response';
+        response.dataset.dreamAiResponse = '1';
+        response.hidden = true;
+        panel.appendChild(response);
+        notice.insertAdjacentElement('afterend', panel);
+        setAiSearchMode('ai', false);
+    }
+
+    initializeAiSearch();
+
+    document.addEventListener('click', function (event) {
+        var modeButton = event.target.closest('[data-dream-search-mode]');
+        if (modeButton) {
+            event.preventDefault();
+            setAiSearchNotice(aiSearchElements(), '');
+            setAiSearchMode(modeButton.dataset.dreamSearchMode);
+            return;
+        }
+        if (event.target.closest('[data-dream-ai-submit]')) {
+            event.preventDefault();
+            submitAiSearch();
+        }
+    });
+
+    document.addEventListener('input', function (event) {
+        if (!event.target.matches('.dream-search-card.is-ai-mode .search-field')) return;
+        var elements = aiSearchElements();
+        setAiSearchNotice(elements, '');
+        if (event.target.value.trim() !== aiSearchQuestion) {
+            cancelAiSearch(elements, true);
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && aiSearchAbort) {
+            cancelAiSearch(aiSearchElements(), true);
+        }
+        if (event.key === '/'
+            && !event.metaKey
+            && !event.ctrlKey
+            && !event.altKey
+            && !event.target.matches('input, textarea, select, [contenteditable="true"]')) {
+            var overlay = document.querySelector('.dream-search-overlay');
+            var searchInput = overlay && overlay.querySelector('.search-field');
+            if (overlay && searchInput && overlay.hidden) {
+                event.preventDefault();
+                overlay.hidden = false;
+                searchInput.focus();
+                return;
+            }
+        }
+        if (event.key !== 'Enter' || !event.target.matches('.dream-search-card.is-ai-mode .search-field')) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        submitAiSearch();
+    }, true);
+
+    document.addEventListener('submit', function (event) {
+        if (!event.target.matches('.dream-search-card.is-ai-mode .search-form')) return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        submitAiSearch();
+    }, true);
+
     $(document).on('input', '.dream-search-overlay .search-field', function () {
+        if (this.closest('.dream-search-card.is-ai-mode')) return;
         var query = this.value.trim();
         clearTimeout(searchTimer);
         var command = resolveSearchCommand(query);
@@ -1255,6 +1712,7 @@
     });
 
     $(document).on('keydown', '.dream-search-overlay .search-field', function (event) {
+        if (this.closest('.dream-search-card.is-ai-mode')) return;
         var items = Array.prototype.slice.call(document.querySelectorAll('.dream-search-result'));
         if (!items.length) return;
         if (event.key === 'ArrowDown') {
@@ -1286,6 +1744,7 @@
 
     $(document).on('click', '.dream-search-close, .dream-search-overlay', function (event) {
         if (event.target === this || $(event.target).closest('.dream-search-close').length) {
+            cancelAiSearch(aiSearchElements(), true);
             $('.dream-search-overlay').prop('hidden', true);
         }
     });

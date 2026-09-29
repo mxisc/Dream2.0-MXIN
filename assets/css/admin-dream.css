@@ -840,6 +840,7 @@
 .dream2-settings-wrap input[type="text"],
 .dream2-settings-wrap input[type="url"],
 .dream2-settings-wrap input[type="email"],
+.dream2-settings-wrap input[type="password"],
 .dream2-settings-wrap input[type="number"],
 .dream2-settings-wrap input[type="date"],
 .dream2-settings-wrap select,
@@ -857,8 +858,89 @@
     max-width: 760px;
 }
 
+.dream2-settings-wrap .dream2-ai-system-prompt-frame {
+    height: 260px;
+    min-height: 260px;
+    max-height: 260px;
+    border: 1px solid var(--dream-admin-border);
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, .04);
+    overflow: hidden;
+    transition: border-color .2s ease, box-shadow .2s ease;
+}
+
+.dream2-settings-wrap .dream2-ai-system-prompt-frame:focus-within {
+    border-color: var(--dream-admin-theme);
+    box-shadow: 0 0 0 3px rgba(80, 191, 255, .18);
+}
+
+.dream2-settings-wrap .dream2-ai-system-prompt-frame textarea {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    max-height: 100%;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    overflow-y: auto;
+    resize: none;
+}
+
+.dream2-settings-wrap .dream2-ai-system-prompt-frame textarea:focus {
+    border: 0;
+    box-shadow: none;
+    outline: none;
+}
+
+.dream2-settings-wrap .dream2-ai-system-prompt-frame textarea[readonly] {
+    background: #f8fafc;
+    cursor: default;
+}
+
+.dream2-settings-wrap .dream2-ai-prompt-edit {
+    margin-top: 10px;
+}
+
+.dream2-ai-prompt-dialog {
+    box-sizing: border-box;
+    width: min(460px, calc(100vw - 32px));
+    padding: 24px;
+    border: 1px solid var(--dream-admin-border);
+    border-radius: 12px;
+    background: #fff;
+    color: #1d2939;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, .24);
+}
+
+.dream2-ai-prompt-dialog::backdrop {
+    background: rgba(15, 23, 42, .55);
+}
+
+.dream2-ai-prompt-dialog h2 {
+    margin: 0 0 12px;
+    font-size: 18px;
+}
+
+.dream2-ai-prompt-dialog p {
+    margin: 0;
+    line-height: 1.7;
+}
+
+.dream2-ai-prompt-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 24px;
+}
+
 .dream2-settings-wrap .dream2-option input[type="text"],
 .dream2-settings-wrap .dream2-option input[type="url"],
+.dream2-settings-wrap .dream2-option input[type="password"],
 .dream2-settings-wrap .dream2-option input[type="date"],
 .dream2-settings-wrap .dream2-option input[type="number"],
 .dream2-settings-wrap .dream2-option textarea,
@@ -878,9 +960,16 @@
     cursor: not-allowed;
 }
 
+.dream2-settings-wrap #dream2-ai_base_url[readonly] {
+    color: #646970;
+    background: #f0f0f1;
+    cursor: default;
+}
+
 .dream2-settings-wrap input[type="text"]:focus,
 .dream2-settings-wrap input[type="url"]:focus,
 .dream2-settings-wrap input[type="email"]:focus,
+.dream2-settings-wrap input[type="password"]:focus,
 .dream2-settings-wrap input[type="number"]:focus,
 .dream2-settings-wrap input[type="date"]:focus,
 .dream2-settings-wrap select:focus,
@@ -888,6 +977,97 @@
     border-color: var(--dream-admin-theme);
     box-shadow: 0 0 0 3px rgba(80, 191, 255, .18);
     outline: none;
+}
+
+.dream2-settings-wrap .mailserver-pass-wrap,
+.dream2-settings-wrap .wp-pwd {
+    width: 100%;
+}
+
+.dream2-settings-wrap .wp-pwd {
+    position: relative;
+    display: block;
+    margin: 0;
+}
+
+.dream2-settings-wrap .wp-pwd input[type="password"],
+.dream2-settings-wrap .wp-pwd input[type="text"] {
+    padding-right: 46px;
+}
+
+.dream2-settings-wrap .wp-pwd .button.wp-hide-pw {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 38px;
+    min-width: 38px;
+    min-height: 38px;
+    margin: 0;
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    justify-content: center;
+}
+
+.dream2-settings-wrap .wp-pwd .button.wp-hide-pw:hover {
+    color: var(--dream-admin-theme);
+    border-color: transparent;
+    background: transparent;
+}
+
+.dream2-settings-wrap .wp-pwd .button.wp-hide-pw:focus {
+    border-color: var(--dream-admin-theme);
+    background: transparent;
+}
+
+.dream2-settings-wrap .wp-pwd .button .text {
+    display: none;
+}
+
+.dream2-ai-test {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dream2-ai-test .button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    line-height: 1;
+}
+
+.dream2-ai-test .button > span {
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+}
+
+.dream2-ai-test .dashicons {
+    flex: 0 0 16px;
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    line-height: 16px;
+}
+
+.dream2-ai-test .spinner {
+    float: none;
+    margin: 0;
+}
+
+.dream2-ai-test-result {
+    color: var(--dream-admin-muted);
+    font-size: 12px;
+}
+
+.dream2-ai-test-result.is-success {
+    color: #15803d;
+}
+
+.dream2-ai-test-result.is-error {
+    color: #b91c1c;
 }
 
 .dream2-settings-wrap .button,
@@ -1598,6 +1778,10 @@
     margin: 20px 0;
 }
 
+.dream2-ai-log .dream2-mail-log-metrics {
+    grid-template-columns: repeat(3, minmax(120px, 1fr));
+}
+
 .dream2-mail-log-metrics > div {
     padding: 16px;
     border: 1px solid #e5e8ee;
@@ -1656,7 +1840,7 @@
 }
 
 .dream2-mail-log-table table {
-    min-width: 1120px;
+    min-width: 1460px;
     border: 0;
 }
 
@@ -1664,6 +1848,10 @@
 .dream2-mail-log-table td {
     padding: 11px 12px;
     vertical-align: top;
+}
+
+.dream2-mail-log-table th {
+    white-space: nowrap;
 }
 
 .dream2-mail-log-table td strong,
@@ -1674,6 +1862,40 @@
 .dream2-mail-log-table td small {
     margin-top: 4px;
     color: #64748b;
+}
+
+.dream2-mail-address {
+    min-width: 180px;
+    max-width: 260px;
+    overflow-wrap: anywhere;
+}
+
+.dream2-mail-content-detail {
+    min-width: 260px;
+    max-width: 440px;
+    margin-top: 6px;
+}
+
+.dream2-mail-content-detail summary {
+    overflow: hidden;
+    color: #2271b1;
+    cursor: pointer;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dream2-mail-content-detail pre {
+    max-height: 320px;
+    margin: 8px 0 0;
+    padding: 10px 12px;
+    overflow: auto;
+    border-left: 3px solid var(--dream-admin-theme, #50bfff);
+    background: #f8fafc;
+    color: #334155;
+    font-family: inherit;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 .dream2-mail-status {

@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('DREAM2_MXIN_VERSION', '0.7.55');
+define('DREAM2_MXIN_VERSION', '0.7.56');
 
 function dream2_mxin_enhancer_active($feature = '') {
     return (bool) apply_filters('dream2_mxin_enhancer_feature_active', defined('DREAM2_MXIN_ENHANCER_VERSION'), $feature);
@@ -42,7 +42,10 @@ add_filter('comment_post_redirect', function ($location, $comment) {
 }, 99, 2);
 
 require_once get_template_directory() . '/inc/mail-log.php';
+require_once get_template_directory() . '/inc/ai-log.php';
 require_once get_template_directory() . '/inc/theme-settings.php';
+require_once get_template_directory() . '/inc/ai-search.php';
+require_once get_template_directory() . '/inc/ai-summary.php';
 require_once get_template_directory() . '/inc/login.php';
 require_once get_template_directory() . '/inc/sidebar-widgets.php';
 require_once get_template_directory() . '/inc/comment-emojis.php';
@@ -492,6 +495,11 @@ function dream2_mxin_enqueue_assets() {
         'enableToutiaoPush' => !$lightweight_widget_context && dream2_enabled('enable_toutiao_push'),
         'ajaxUrl'            => admin_url('admin-ajax.php'),
         'searchRestUrl'      => rest_url('wp/v2/search'),
+        'aiSearchEnabled'    => dream2_mxin_site_ai_available(),
+        'aiSearchEndpoint'   => rest_url('dream2-mxin/v1/ai-search'),
+        'aiSearchNonce'      => wp_create_nonce('dream2_mxin_ai_search'),
+        'aiSearchRestNonce'  => wp_create_nonce('wp_rest'),
+        'aiSearchMaxLength'  => dream2_mxin_site_ai_question_limit(),
         'searchCommandsEnabled' => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_search_commands'),
         'logoEasterEggEnabled' => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_logo_easter_egg'),
         'randomTeleportEnabled' => (bool) apply_filters('dream2_mxin_enhancer_option_enabled', false, 'enable_random_teleport'),

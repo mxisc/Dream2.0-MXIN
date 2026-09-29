@@ -46,15 +46,6 @@ function dream2_mxin_login_request_action() {
     return is_string($action) ? sanitize_key(wp_unslash($action)) : '';
 }
 
-function dream2_mxin_login_disable_remember_me() {
-    $action = dream2_mxin_login_request_action();
-    if (!in_array($action, array('', 'login'), true)) {
-        return;
-    }
-    unset($_POST['rememberme'], $_REQUEST['rememberme']);
-}
-add_action('login_init', 'dream2_mxin_login_disable_remember_me');
-
 function dream2_mxin_login_is_interactive_request() {
     $script = basename((string) ($_SERVER['SCRIPT_NAME'] ?? ''));
     $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
@@ -322,7 +313,6 @@ function dream2_mxin_login_footer_script() {
     <script>
     document.getElementById('user_login')?.setAttribute('placeholder', '<?php echo esc_js($is_reset ? '请输入账号或邮箱' : '请输入账号'); ?>');
     document.getElementById('user_pass')?.setAttribute('placeholder', '请输入密码');
-    document.querySelector('.forgetmenot')?.remove();
     document.getElementById('wp-submit')?.setAttribute('value', '<?php echo esc_js($is_reset ? '发送重置邮件' : '登录'); ?>');
     <?php if ($is_reset) : ?>
     const dream2LoginLink = document.querySelector('.wp-login-log-in');

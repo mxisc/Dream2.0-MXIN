@@ -216,7 +216,17 @@ body.login.dream2-login .button.wp-hide-pw {
 }
 
 body.login.dream2-login .forgetmenot {
-    display: none;
+    display: flex;
+    align-items: center;
+    float: none;
+    margin: 18px 0 0;
+    color: rgba(244, 249, 255, 0.82);
+    font-size: 13px;
+    line-height: 18px;
+}
+
+body.login.dream2-login .forgetmenot label {
+    cursor: pointer;
 }
 
 body.login.dream2-login input[type="checkbox"] {

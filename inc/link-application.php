@@ -133,15 +133,28 @@ function dream2_mxin_link_application_upsert_link($site_name, $site_url, $avatar
 }
 
 function dream2_mxin_link_application_url_host($url) {
-    $host = strtolower((string) wp_parse_url($url, PHP_URL_HOST));
-    $host = rtrim($host, '.');
-    return str_starts_with($host, 'www.') ? substr($host, 4) : $host;
+    return dream2_mxin_normalize_link_application_host($url);
 }
 
 function dream2_mxin_link_application_hosts_match($site_url, $backlink_url) {
     $site_host = dream2_mxin_link_application_url_host($site_url);
     $backlink_host = dream2_mxin_link_application_url_host($backlink_url);
     return $site_host !== '' && $backlink_host !== '' && hash_equals($site_host, $backlink_host);
+}
+
+function dream2_mxin_link_application_blacklisted($url) {
+    $host = dream2_mxin_link_application_url_host($url);
+    if ($host === '') {
+        return false;
+    }
+    $blacklist = dream2_mxin_normalize_link_application_blacklist(dream2_get('link_application_blacklist', ''));
+    foreach (preg_split('/\R+/', $blacklist) as $blocked_host) {
+        $blocked_host = trim($blocked_host);
+        if ($blocked_host !== '' && hash_equals($blocked_host, $host)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function dream2_mxin_link_application_is_ajax_request() {
@@ -271,6 +284,9 @@ function dream2_mxin_handle_link_application() {
     if ($avatar_url_raw !== '' && $avatar_url === '') {
         dream2_mxin_link_application_redirect($post_id, 'invalid_avatar');
     }
+    if (dream2_mxin_link_application_blacklisted($site_url) || dream2_mxin_link_application_blacklisted($backlink_url)) {
+        dream2_mxin_link_application_redirect($post_id, 'closed');
+    }
     if (!dream2_mxin_link_application_hosts_match($site_url, $backlink_url)) {
         dream2_mxin_link_application_redirect($post_id, 'backlink_host_mismatch');
     }
@@ -295,7 +311,13 @@ function dream2_mxin_handle_link_application() {
         dream2_mxin_link_application_redirect($post_id, 'backlink_unreachable');
     }
     $target_url = dream2_get('links_blogger_url', home_url('/')) ?: home_url('/');
-    $matched_url = dream2_mxin_find_backlink($backlink['body'], $target_url, $backlink_url);
+    $inspection = dream2_mxin_inspect_backlink_content(
+        $backlink['body'],
+        $target_url,
+        $backlink_url,
+        $backlink['content_type'] ?? ''
+    );
+    $matched_url = $inspection['matched_url'];
     if (!$matched_url) {
         dream2_mxin_link_application_redirect($post_id, 'backlink_missing');
     }
@@ -393,5 +415,53 @@ function dream2_mxin_render_link_application_comment_column($column, $comment_id
     if ($matched_url) {
         echo '<br><span>' . esc_html__('已找到本站链接', 'dream2-mxin') . '</span>';
     }
+    $comment = get_comment($comment_id);
+    $host = $comment ? dream2_mxin_link_application_url_host($comment->comment_author_url) : '';
+    if ($host !== '' && current_user_can('edit_theme_options')) {
+        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="margin-top:4px" onsubmit="return confirm(\'' . esc_js(sprintf(__('确认将 %s 加入友链申请黑名单？', 'dream2-mxin'), $host)) . '\');">';
+        echo '<input type="hidden" name="action" value="dream2_blacklist_link_application">';
+        echo '<input type="hidden" name="comment_id" value="' . esc_attr((string) $comment_id) . '">';
+        wp_nonce_field('dream2_blacklist_link_application_' . (int) $comment_id);
+        echo '<button type="submit" class="button-link-delete">' . esc_html__('加入黑名单', 'dream2-mxin') . '</button></form>';
+    }
 }
 add_action('manage_comments_custom_column', 'dream2_mxin_render_link_application_comment_column', 10, 2);
+
+function dream2_mxin_blacklist_link_application() {
+    if (!current_user_can('edit_theme_options')) {
+        wp_die(esc_html__('权限不足。', 'dream2-mxin'));
+    }
+    $comment_id = absint($_POST['comment_id'] ?? 0);
+    check_admin_referer('dream2_blacklist_link_application_' . $comment_id);
+    $comment = get_comment($comment_id);
+    if (!$comment || !get_comment_meta($comment_id, DREAM2_MXIN_LINK_APPLICATION_META, true)) {
+        wp_safe_redirect(add_query_arg('dream2_link_blacklist', 'invalid', admin_url('edit-comments.php')));
+        exit;
+    }
+
+    $host = dream2_mxin_link_application_url_host($comment->comment_author_url);
+    if ($host === '') {
+        wp_safe_redirect(add_query_arg('dream2_link_blacklist', 'invalid', admin_url('edit-comments.php')));
+        exit;
+    }
+
+    $options = get_option('dream2_options', array());
+    $options = is_array($options) ? $options : array();
+    $current = (string) ($options['link_application_blacklist'] ?? '');
+    $options['link_application_blacklist'] = dream2_mxin_normalize_link_application_blacklist($current . "\n" . $host);
+    update_option('dream2_options', $options, false);
+    wp_safe_redirect(add_query_arg('dream2_link_blacklist', 'added', admin_url('edit-comments.php')));
+    exit;
+}
+add_action('admin_post_dream2_blacklist_link_application', 'dream2_mxin_blacklist_link_application');
+
+function dream2_mxin_link_application_blacklist_notice() {
+    $status = sanitize_key(wp_unslash($_GET['dream2_link_blacklist'] ?? ''));
+    if ($status === '') {
+        return;
+    }
+    $message = $status === 'added' ? '该友链申请域名已加入黑名单。' : '无法从这条友链申请中读取有效域名。';
+    $class = $status === 'added' ? 'notice notice-success is-dismissible' : 'notice notice-error is-dismissible';
+    echo '<div class="' . esc_attr($class) . '"><p>' . esc_html($message) . '</p></div>';
+}
+add_action('admin_notices', 'dream2_mxin_link_application_blacklist_notice');

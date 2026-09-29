@@ -13,14 +13,54 @@ function dream2_mxin_settings_groups() {
     return array(
         'site' => '站点信息', 'appearance' => '外观特效', 'home_layout' => '首页布局',
         'content_page' => '内容页面', 'communication' => '评论邮件',
-        'performance' => '性能统计', 'advanced' => '高级设置',
+        'performance' => '性能统计', 'ai' => 'AI 配置', 'advanced' => '高级设置',
     );
+}
+
+function dream2_mxin_ai_provider_base_urls() {
+    return array(
+        'openai'   => 'https://api.openai.com/v1',
+        'deepseek' => 'https://api.deepseek.com',
+        'glm'      => 'https://open.bigmodel.cn/api/paas/v4',
+    );
+}
+
+function dream2_mxin_ai_provider_for_base_url($base_url) {
+    $base_url = untrailingslashit(trim((string) $base_url));
+    if ($base_url === '') {
+        return 'openai';
+    }
+    foreach (dream2_mxin_ai_provider_base_urls() as $provider => $provider_base_url) {
+        if (strcasecmp($base_url, $provider_base_url) === 0) {
+            return $provider;
+        }
+    }
+    return 'custom';
+}
+
+function dream2_mxin_ai_user_choices() {
+    $choices = array('0' => '未关联');
+    $users = get_users(array(
+        'orderby' => 'display_name',
+        'order'   => 'ASC',
+        'fields'  => array('ID', 'display_name', 'user_login'),
+    ));
+    foreach ($users as $user) {
+        $display_name = trim((string) $user->display_name);
+        $user_login = (string) $user->user_login;
+        $choices[(string) absint($user->ID)] = sprintf(
+            '%s（%s）',
+            $display_name !== '' ? $display_name : $user_login,
+            $user_login
+        );
+    }
+    return $choices;
 }
 
 function dream2_mxin_settings_subgroups() {
     return array(
         'site' => array(
-            array('label' => '基础资料', 'fields' => array('document_hidden_title', 'document_visible_title', 'copy_explain')),
+            array('label' => '基础资料', 'fields' => array('site_favicon_size', 'document_hidden_title', 'document_visible_title', 'copy_explain')),
             array('label' => '备案与建站信息', 'fields' => array('record_number', 'record_number_moe', 'record_number_ps', 'website_time')),
         ),
         'appearance' => array(
@@ -54,6 +94,12 @@ function dream2_mxin_settings_subgroups() {
             array('label' => '缓存优化', 'fields' => array('enable_sw')),
             array('label' => '统计与搜索推送', 'fields' => array('enable_busuanzi', 'enable_baidu_push', 'enable_toutiao_push')),
         ),
+        'ai' => array(
+            array('label' => 'OpenAI 兼容服务', 'fields' => array('ai_provider', 'ai_base_url', 'ai_api_key', 'ai_model')),
+            array('label' => '角色卡与关联账户', 'fields' => array('ai_system_prompt', 'ai_user_id')),
+            array('label' => '站内问答', 'fields' => array('enable_ai_search', 'ai_search_prompt')),
+            array('label' => '文章总结', 'fields' => array('enable_article_summary', 'ai_summary_prompt')),
+        ),
         'advanced' => array(
             array('label' => 'CSS', 'fields' => array('external_css', 'inline_css')),
             array('label' => 'Head 脚本', 'fields' => array('external_js_head', 'inline_js_head')),
@@ -66,7 +112,8 @@ function dream2_mxin_link_settings_subgroups() {
     return array(
         array('label' => '接管与分类', 'fields' => array('link_takeover_categories', 'link_friend_category', 'link_one_way_category', 'link_lost_category')),
         array('label' => '自动检测', 'fields' => array('enable_auto_link_check', 'link_check_interval', 'link_check_batch_size', 'link_check_failure_threshold', 'link_auto_move_one_way', 'link_auto_move_lost', 'link_one_way_notice_days', 'link_one_way_delete_days')),
-        array('label' => '页面展示', 'fields' => array('links_thumbnail', 'links_default_avatar', 'link_enable_comment', 'enable_link_application')),
+        array('label' => '页面展示', 'fields' => array('links_thumbnail', 'links_default_avatar')),
+        array('label' => '友链申请', 'fields' => array('link_enable_comment', 'enable_link_application', 'link_application_blacklist')),
         array('label' => '交换信息', 'fields' => array('show_exchange_info', 'links_blogger_name', 'links_blogger_url', 'links_blogger_avatar', 'links_blogger_description')),
         array('label' => '补充内容', 'fields' => array('links_info')),
     );
@@ -314,7 +361,38 @@ function dream2_mxin_render_repeater_item($name, $index, $item = array()) {
 }
 
 function dream2_mxin_link_settings_fields() {
-    return array('link_takeover_categories', 'link_friend_category', 'link_one_way_category', 'link_lost_category', 'enable_auto_link_check', 'link_check_interval', 'link_check_batch_size', 'link_check_failure_threshold', 'link_auto_move_one_way', 'link_auto_move_lost', 'link_one_way_notice_days', 'link_one_way_delete_days', 'links_thumbnail', 'links_default_avatar', 'show_exchange_info', 'links_blogger_name', 'links_blogger_url', 'links_blogger_avatar', 'links_blogger_description', 'links_info', 'link_enable_comment', 'enable_link_application');
+    return array('link_takeover_categories', 'link_friend_category', 'link_one_way_category', 'link_lost_category', 'enable_auto_link_check', 'link_check_interval', 'link_check_batch_size', 'link_check_failure_threshold', 'link_auto_move_one_way', 'link_auto_move_lost', 'link_one_way_notice_days', 'link_one_way_delete_days', 'links_thumbnail', 'links_default_avatar', 'show_exchange_info', 'links_blogger_name', 'links_blogger_url', 'links_blogger_avatar', 'links_blogger_description', 'links_info', 'link_enable_comment', 'enable_link_application', 'link_application_blacklist');
+}
+
+function dream2_mxin_normalize_link_application_host($value) {
+    $value = strtolower(trim((string) $value));
+    if ($value === '') {
+        return '';
+    }
+    $url = preg_match('#^https?://#i', $value) ? $value : 'https://' . ltrim($value, '/');
+    $host = strtolower((string) wp_parse_url($url, PHP_URL_HOST));
+    $host = rtrim($host, '.');
+    if (str_starts_with($host, 'www.')) {
+        $host = substr($host, 4);
+    }
+    if ($host !== '' && function_exists('idn_to_ascii')) {
+        $ascii_host = idn_to_ascii($host, 0);
+        if ($ascii_host !== false) {
+            $host = strtolower($ascii_host);
+        }
+    }
+    return preg_match('/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/', $host) ? $host : '';
+}
+
+function dream2_mxin_normalize_link_application_blacklist($value) {
+    $hosts = array();
+    foreach (preg_split('/[\r\n,]+/', (string) $value) as $entry) {
+        $host = dream2_mxin_normalize_link_application_host($entry);
+        if ($host !== '') {
+            $hosts[$host] = true;
+        }
+    }
+    return implode("\n", array_keys($hosts));
 }
 
 function dream2_mxin_default_link_category_id($name) {
@@ -567,7 +645,7 @@ function dream2_mxin_link_http_check($url, $body_limit) {
         'redirection'         => 3,
         'limit_response_size' => $body_limit,
         'user-agent'          => 'Mozilla/5.0 (compatible; Dream2 Link Checker/1.0; +' . home_url('/') . ')',
-        'headers'             => array('Accept' => 'text/html,application/xhtml+xml'),
+        'headers'             => array('Accept' => 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.1'),
     ));
     if (is_wp_error($response)) {
         return array('ok' => false, 'code' => 0, 'body' => '', 'message' => $response->get_error_message());
@@ -577,8 +655,14 @@ function dream2_mxin_link_http_check($url, $body_limit) {
         'ok'      => $code >= 200 && $code < 300,
         'code'    => $code,
         'body'    => (string) wp_remote_retrieve_body($response),
+        'content_type' => (string) wp_remote_retrieve_header($response, 'content-type'),
         'message' => $code >= 200 && $code < 300 ? '' : 'HTTP ' . $code,
     );
+}
+
+function dream2_mxin_link_normalize_host($host) {
+    $host = strtolower(rtrim((string) $host, '.'));
+    return str_starts_with($host, 'www.') ? substr($host, 4) : $host;
 }
 
 function dream2_mxin_link_url_points_to($href, $target_url, $base_url) {
@@ -598,7 +682,7 @@ function dream2_mxin_link_url_points_to($href, $target_url, $base_url) {
     };
     if (
         strtolower($link['scheme']) !== strtolower($target['scheme'])
-        || strtolower($link['host']) !== strtolower($target['host'])
+        || dream2_mxin_link_normalize_host($link['host']) !== dream2_mxin_link_normalize_host($target['host'])
         || $port($link) !== $port($target)
     ) {
         return false;
@@ -612,7 +696,55 @@ function dream2_mxin_link_url_points_to($href, $target_url, $base_url) {
     return $target_path === '/' || $link_path === $target_path || str_starts_with($link_path, $target_path . '/');
 }
 
-function dream2_mxin_find_backlink($html, $target_url, $base_url) {
+function dream2_mxin_backlink_json_url_key($key) {
+    $key = preg_replace('/([a-z0-9])([A-Z])/', '$1_$2', (string) $key);
+    $key = strtolower(str_replace(array('-', '.', ' '), '_', $key));
+    if (preg_match('/(?:^|_)(?:avatar|icon|image|logo|cover|thumbnail)(?:$|_)/', $key)) {
+        return false;
+    }
+    return (bool) preg_match('/(?:^|_)(?:url|href|link|links|website|homepage|site)(?:$|_)/', $key);
+}
+
+function dream2_mxin_find_backlink_in_json($value, $target_url, $base_url, &$candidate_count, $value_is_url = false, $depth = 0) {
+    if ($depth > 24) {
+        return '';
+    }
+    if (is_array($value)) {
+        foreach ($value as $key => $child) {
+            $child_is_url = is_int($key)
+                ? $value_is_url
+                : dream2_mxin_backlink_json_url_key($key);
+            $matched = dream2_mxin_find_backlink_in_json(
+                $child,
+                $target_url,
+                $base_url,
+                $candidate_count,
+                $child_is_url,
+                $depth + 1
+            );
+            if ($matched !== '') {
+                return $matched;
+            }
+        }
+        return '';
+    }
+    if (!$value_is_url || !is_string($value)) {
+        return '';
+    }
+    $value = html_entity_decode(trim($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    if ($value === '') {
+        return '';
+    }
+    $absolute = WP_Http::make_absolute_url($value, $base_url);
+    $parts = wp_parse_url($absolute);
+    if (!$parts || empty($parts['scheme']) || empty($parts['host']) || !in_array(strtolower($parts['scheme']), array('http', 'https'), true)) {
+        return '';
+    }
+    $candidate_count++;
+    return dream2_mxin_link_url_points_to($value, $target_url, $base_url) ? $absolute : '';
+}
+
+function dream2_mxin_find_backlink_in_html($html, $target_url, $base_url, &$anchor_count) {
     if (!class_exists('WP_HTML_Tag_Processor')) {
         require_once ABSPATH . WPINC . '/html-api/html5-named-character-references.php';
         require_once ABSPATH . WPINC . '/html-api/class-wp-html-decoder.php';
@@ -623,13 +755,134 @@ function dream2_mxin_find_backlink($html, $target_url, $base_url) {
         require_once ABSPATH . WPINC . '/html-api/class-wp-html-tag-processor.php';
     }
     $processor = new WP_HTML_Tag_Processor($html);
+    $anchor_count = 0;
     while ($processor->next_tag('a')) {
+        $anchor_count++;
         $href = $processor->get_attribute('href');
         if (is_string($href) && dream2_mxin_link_url_points_to($href, $target_url, $base_url)) {
             return WP_Http::make_absolute_url($href, $base_url);
         }
     }
     return '';
+}
+
+function dream2_mxin_inspect_backlink_content($body, $target_url, $base_url, $content_type = '') {
+    $body = (string) $body;
+    $trimmed = ltrim($body);
+    $content_type = strtolower((string) $content_type);
+    $json_like = str_contains($content_type, 'json')
+        || str_starts_with($trimmed, '{')
+        || str_starts_with($trimmed, '[');
+
+    if ($json_like) {
+        $decoded = json_decode($body, true);
+        if (!is_array($decoded)) {
+            return array(
+                'status' => 'error',
+                'matched_url' => '',
+                'message' => '反链页返回的 JSON 无法解析',
+            );
+        }
+        $candidate_count = 0;
+        $matched_url = dream2_mxin_find_backlink_in_json(
+            $decoded,
+            $target_url,
+            $base_url,
+            $candidate_count
+        );
+        if ($matched_url !== '') {
+            return array(
+                'status' => 'success',
+                'matched_url' => $matched_url,
+                'message' => '站点正常，已在 JSON 中找到反链',
+            );
+        }
+        if ($candidate_count > 0) {
+            return array(
+                'status' => 'missing',
+                'matched_url' => '',
+                'message' => '站点正常，JSON 中未找到反链',
+            );
+        }
+        return array(
+            'status' => 'error',
+            'matched_url' => '',
+            'message' => '反链页返回 JSON，但没有可识别的链接字段',
+        );
+    }
+
+    $anchor_count = 0;
+    $matched_url = dream2_mxin_find_backlink_in_html($body, $target_url, $base_url, $anchor_count);
+    if ($matched_url !== '') {
+        return array(
+            'status' => 'success',
+            'matched_url' => $matched_url,
+            'message' => '站点正常，已在 HTML 中找到反链',
+        );
+    }
+
+    $embedded_candidate_count = 0;
+    // Parse attributes as HTML so minified, unquoted JSON script tags work too.
+    if (preg_match_all(
+        '~<script\b(?:[^>"\']|"[^"]*"|\'[^\']*\')*>(.*?)</script\s*>~is',
+        $body,
+        $scripts,
+        PREG_SET_ORDER
+    )) {
+        foreach ($scripts as $script) {
+            $script_processor = new WP_HTML_Tag_Processor($script[0]);
+            if (!$script_processor->next_tag('script')) {
+                continue;
+            }
+            $type = strtolower(trim((string) $script_processor->get_attribute('type')));
+            $id = (string) $script_processor->get_attribute('id');
+            if (
+                !in_array($type, array('application/json', 'application/ld+json'), true)
+                && !in_array($id, array('__NEXT_DATA__', '__NUXT_DATA__'), true)
+            ) {
+                continue;
+            }
+            $decoded = json_decode(trim($script[1]), true);
+            if (!is_array($decoded)) {
+                continue;
+            }
+            $matched_url = dream2_mxin_find_backlink_in_json(
+                $decoded,
+                $target_url,
+                $base_url,
+                $embedded_candidate_count
+            );
+            if ($matched_url !== '') {
+                return array(
+                    'status' => 'success',
+                    'matched_url' => $matched_url,
+                    'message' => '站点正常，已在页面数据中找到反链',
+                );
+            }
+        }
+    }
+
+    $client_rendered = (bool) preg_match(
+        '~(?:id=["\'](?:app|root|__next)["\']|data-reactroot|__NUXT__|/_next/static/|type=["\']module["\'])~i',
+        $body
+    );
+    if ($anchor_count === 0 || ($client_rendered && $embedded_candidate_count === 0)) {
+        return array(
+            'status' => 'error',
+            'matched_url' => '',
+            'message' => '反链页未返回可可靠解析的链接，可能由 JavaScript 动态渲染',
+        );
+    }
+    return array(
+        'status' => 'missing',
+        'matched_url' => '',
+        'message' => '站点正常，HTML 中未找到反链',
+    );
+}
+
+function dream2_mxin_find_backlink($body, $target_url, $base_url, $content_type = '') {
+    $inspection = dream2_mxin_inspect_backlink_content($body, $target_url, $base_url, $content_type);
+    return $inspection['matched_url'];
 }
 
 function dream2_mxin_verify_friend_link($bookmark) {
@@ -671,12 +924,18 @@ function dream2_mxin_verify_friend_link($bookmark) {
         );
     }
     $target_url = dream2_get('links_blogger_url', home_url('/')) ?: home_url('/');
-    $matched_url = dream2_mxin_find_backlink($backlink['body'], $target_url, $extra['backlink_url']);
+    $inspection = dream2_mxin_inspect_backlink_content(
+        $backlink['body'],
+        $target_url,
+        $extra['backlink_url'],
+        $backlink['content_type'] ?? ''
+    );
+    $matched_url = $inspection['matched_url'];
     return array(
         'access'      => 'success',
-        'backlink'    => $matched_url ? 'success' : 'missing',
-        'status'      => $matched_url ? 'success' : 'missing',
-        'message'     => $matched_url ? '站点正常，已找到反链' : '站点正常，未找到反链',
+        'backlink'    => $inspection['status'],
+        'status'      => $inspection['status'],
+        'message'     => $inspection['message'],
         'checked_at'  => $checked_at,
         'matched_url' => $matched_url,
         'status_code' => $backlink['code'],
@@ -1419,25 +1678,83 @@ function dream2_mxin_handle_link_manager_action() {
     exit;
 }
 
+function dream2_mxin_site_icon_size_choices() {
+    $choices = array('wordpress' => '跟随 WordPress（32 × 32）');
+    $site_icon_id = absint(get_option('site_icon'));
+    if (!$site_icon_id) {
+        return $choices;
+    }
+
+    $metadata = wp_get_attachment_metadata($site_icon_id);
+    if (!is_array($metadata)) {
+        return $choices;
+    }
+
+    $dimensions = array();
+    $full_width = absint($metadata['width'] ?? 0);
+    $full_height = absint($metadata['height'] ?? 0);
+    if ($full_width > 0 && $full_width === $full_height) {
+        $dimensions[$full_width] = true;
+    }
+
+    foreach ((array) ($metadata['sizes'] ?? array()) as $size) {
+        $width = absint($size['width'] ?? 0);
+        $height = absint($size['height'] ?? 0);
+        if ($width > 0 && $width === $height) {
+            $dimensions[$width] = true;
+        }
+    }
+
+    ksort($dimensions, SORT_NUMERIC);
+    foreach (array_keys($dimensions) as $dimension) {
+        $choices['size-' . $dimension] = sprintf('%1$d × %1$d', $dimension);
+    }
+
+    return $choices;
+}
+
+function dream2_mxin_default_ai_search_prompt() {
+    return '用简洁、准确、自然的中文回答用户问题。涉及站内事实时，只依据本次提供的公开站内资料，不要编造。只有资料能直接回答问题时才引用相关来源，用 [1]、[2] 等编号；需要时才列要点。资料不足、资料与问题无关或问题涉及无法访问的本地环境时，只用一句话说明无法确认，不列要点、不提无关资料、不附参考来源。输出纯文本，不使用 Markdown 标题、加粗、代码围栏或链接语法，回答不超过 600 个汉字。';
+}
+
+function dream2_mxin_default_ai_summary_prompt() {
+    return '概括用户提供的文章，只提炼文章中的主要信息，不添加文章外的事实。用自然中文写一段不超过 180 个汉字的简短总结；只输出纯文本，不使用标题、列表、Markdown 或引文。';
+}
+
+function dream2_mxin_ai_feature_prompt_value($name, $value) {
+    $defaults = array(
+        'ai_search_prompt' => array('prompt' => dream2_mxin_default_ai_search_prompt(), 'previous_hash' => '29f51afa6951987e86570b2edcb05870e8f75ca1f836daea521600f1d0dd44ec'),
+        'ai_summary_prompt' => array('prompt' => dream2_mxin_default_ai_summary_prompt(), 'previous_hash' => 'fc2b5ff3a018251e6babfe633ec0c7fd41eb9d7b333c7b92a1dbb76e6f63098d'),
+    );
+    if (!isset($defaults[$name])) return '';
+    $value = is_scalar($value) ? trim((string) $value) : '';
+    $previous_search_prompt = '用简洁、准确、自然的中文回答用户问题。涉及站内事实时，只依据本次提供的公开站内资料；资料不足就明确说明，不要编造。引用资料时使用 [1]、[2] 等来源编号。输出纯文本，不使用 Markdown 标题、加粗、代码围栏或链接语法。回答不超过 600 个汉字，先给直接结论，再列出不超过 6 个要点，并确保结尾完整。';
+    return $value === '' || hash_equals($defaults[$name]['previous_hash'], hash('sha256', $value))
+        || ($name === 'ai_search_prompt' && hash_equals(hash('sha256', $previous_search_prompt), hash('sha256', $value)))
+        ? $defaults[$name]['prompt']
+        : $value;
+}
+
 function dream2_mxin_settings_registry() {
     static $registry;
     if (isset($registry)) return $registry;
 
     $definitions = array(
-        'site' => 'document_hidden_title|离屏文案（离开）,document_visible_title|离屏文案（回来）,copy_explain|拷贝说明,record_number|备案号,record_number_moe|萌备号,record_number_ps|公安备案号,website_time|建站时间',
+        'site' => 'site_favicon_size|站点图标尺寸,document_hidden_title|离屏文案（离开）,document_visible_title|离屏文案（回来）,copy_explain|拷贝说明,record_number|备案号,record_number_moe|萌备号,record_number_ps|公安备案号,website_time|建站时间',
         'appearance' => 'theme_style|主题风格,default_theme|默认主题模式,theme_color|明亮模式主题色,night_theme_color|黑暗模式主题色,font_preset|博客字体,web_font|自定义字体 CSS 链接,custom_font|自定义字体名称,night_logo|黑暗模式 Logo,enable_image_bg|开启博客背景图,card_opacity|卡片透明度,background_image_opacity|背景图透明度,background_pc|明亮模式 PC 背景图,background_mobile|明亮模式移动端背景图,night_background_pc|黑暗模式 PC 背景图,night_background_mobile|黑暗模式移动端背景图,cursor_style|鼠标风格,cursor_move|鼠标移动特效,cursor_click|鼠标点击特效,effects_lantern_mode|灯笼特效,effects_sakura_mode|樱花特效,effects_snowflake_mode|雪花特效,effects_universe_mode|宇宙星空特效,effects_circle_magic_mode|上升圆点特效,enable_gray_mode|灰色模式',
         'home_layout' => 'index_inform|首页通知,enable_banner|开启博客横幅大图,banner_image|横幅背景图,banner_description|横幅文字描述,sidebar_column|博客布局方式,carousel_options|首页大图轮播选项,module_options|模块化布局选项,left_sidebar_sticky|左侧边栏悬浮,right_sidebar_sticky|右侧边栏悬浮',
         'content_page' => 'default_thumbnail|默认文章封面图,top_thumbnail_mode|置顶文章封面模式,thumbnail_mode|文章列表封面模式,drawer_toc|侧边抽屉式目录,code_pretty|代码块高亮主题,code_fold_line|代码块折叠行数（0-500）,img_fold_height|正文长图折叠高度（0-3000px）,show_img_name|显示图片名称,invalid_tips_day|文章失效提示天数,enable_katex|KaTeX 公式支持,enable_copyright|开启文章版权声明,enable_post_share|开启文章分享,enable_archivers_route|启用文章归档页,archivers_route_slug|文章归档路径,enable_friends_stats|朋友圈统计信息',
         'communication' => 'enable_private_comment|允许私密评论,avatar_privacy|头像隐私保护,comment_emoji_groups|评论表情分组,enable_smtp|启用 SMTP,smtp_host|SMTP 主机,smtp_port|SMTP 端口,smtp_secure|加密方式,smtp_username|SMTP 账号,smtp_password|SMTP 密码,smtp_from_email|发件邮箱,smtp_from_name|发件名称,email_notify_post_author|新评论提醒,email_notify_moderator|待审核评论提醒,email_notify_reply|回评提醒,link_notify_recovered|友链博客恢复提醒,link_notify_one_way_reminder|单向友链提醒通知,link_notify_one_way_deleted|单向友链删除通知,link_notify_lost|友链博客失联提醒',
-        'link' => 'link_takeover_categories|梦屿接管友链分类,link_friend_category|友情链接分类,link_one_way_category|单向友链分类,link_lost_category|失联博客分类,enable_auto_link_check|自动检测友链,link_check_interval|自动检测周期,link_check_batch_size|每批检测数量,link_check_failure_threshold|连续失败阈值,link_auto_move_one_way|自动移动单向友链,link_auto_move_lost|自动移动失联博客,link_one_way_notice_days|单向友链提醒天数,link_one_way_delete_days|单向友链删除天数,links_thumbnail|友链页面封面图,links_default_avatar|友链默认 Logo,show_exchange_info|显示友链交换信息,links_blogger_name|交换信息名称,links_blogger_url|交换信息地址,links_blogger_avatar|交换信息 Logo,links_blogger_description|交换信息描述,links_info|友链补充信息,link_enable_comment|友链页面评论,enable_link_application|自助申请友链',
+        'link' => 'link_takeover_categories|梦屿接管友链分类,link_friend_category|友情链接分类,link_one_way_category|单向友链分类,link_lost_category|失联博客分类,enable_auto_link_check|自动检测友链,link_check_interval|自动检测周期,link_check_batch_size|每批检测数量,link_check_failure_threshold|连续失败阈值,link_auto_move_one_way|自动移动单向友链,link_auto_move_lost|自动移动失联博客,link_one_way_notice_days|单向友链提醒天数,link_one_way_delete_days|单向友链删除天数,links_thumbnail|友链页面封面图,links_default_avatar|友链默认 Logo,show_exchange_info|显示友链交换信息,links_blogger_name|交换信息名称,links_blogger_url|交换信息地址,links_blogger_avatar|交换信息 Logo,links_blogger_description|交换信息描述,links_info|友链补充信息,link_enable_comment|友链页面评论,enable_link_application|自助申请友链,link_application_blacklist|友链申请黑名单',
         'performance' => 'load_progress|加载进度条,enable_sw|Service Worker 优化,enable_pjax|PJAX 加载,enable_busuanzi|不蒜子访客统计,enable_baidu_push|百度 URL 自动推送,enable_toutiao_push|头条 URL 自动推送',
+        'ai' => 'ai_provider|API 服务,ai_base_url|Base URL,ai_api_key|API Key,ai_model|模型,ai_system_prompt|角色卡提示词,ai_user_id|关联账户,enable_ai_search|启用 AI 站内问答,ai_search_prompt|站内问答提示词,enable_article_summary|启用文章内 AI 总结,ai_summary_prompt|文章总结提示词',
         'advanced' => 'external_css|外部 CSS 链接,inline_css|内嵌 CSS,external_js_head|外部 JS（head）,inline_js_head|内嵌 JS（head）,external_js_body|外部 JS（body）,inline_js_body|内嵌 JS（body）',
     );
-    $toggles = array('enable_image_bg','enable_banner','drawer_toc','show_img_name','enable_katex','enable_copyright','enable_post_share','enable_color_character','show_ad_tag','ad_tag_close','enable_tag_color','enable_tagcloud_color','enable_archivers_route','link_takeover_categories','show_exchange_info','link_enable_comment','enable_link_application','enable_friends_stats','enable_auto_link_check','link_auto_move_one_way','link_auto_move_lost','link_notify_recovered','link_notify_one_way_reminder','link_notify_one_way_deleted','link_notify_lost','enable_smtp','email_notify_post_author','email_notify_moderator','email_notify_reply','avatar_privacy','enable_sw','enable_pjax','enable_gray_mode','enable_busuanzi','enable_baidu_push','enable_toutiao_push','enable_private_comment');
+    $toggles = array('enable_image_bg','enable_banner','drawer_toc','show_img_name','enable_katex','enable_copyright','enable_post_share','enable_color_character','show_ad_tag','ad_tag_close','enable_tag_color','enable_tagcloud_color','enable_archivers_route','link_takeover_categories','show_exchange_info','link_enable_comment','enable_link_application','enable_friends_stats','enable_auto_link_check','link_auto_move_one_way','link_auto_move_lost','link_notify_recovered','link_notify_one_way_reminder','link_notify_one_way_deleted','link_notify_lost','enable_smtp','email_notify_post_author','email_notify_moderator','email_notify_reply','avatar_privacy','enable_sw','enable_pjax','enable_gray_mode','enable_busuanzi','enable_baidu_push','enable_toutiao_push','enable_private_comment','enable_ai_search','enable_article_summary');
     $images = array('night_logo','background_pc','background_mobile','night_background_pc','night_background_mobile','banner_image','default_thumbnail','love_oneself_avatar','love_opposite_avatar','ad_image','links_thumbnail','links_default_avatar','links_blogger_avatar');
-    $textareas = array('copy_explain','color_character','notice_content','music_config','ad_custom_code','links_info','external_css','inline_css','external_js_head','inline_js_head','external_js_body','inline_js_body');
+    $textareas = array('copy_explain','color_character','notice_content','music_config','ad_custom_code','links_info','link_application_blacklist','ai_system_prompt','ai_search_prompt','ai_summary_prompt','external_css','inline_css','external_js_head','inline_js_head','external_js_body','inline_js_body');
     $dates = array('website_time');
-    $urls = array('links_blogger_url','hitokoto_custom_url');
+    $urls = array('links_blogger_url','hitokoto_custom_url','ai_base_url');
     $emails = array('smtp_from_email');
     $numbers = array(
         'code_fold_line'=>array('min'=>0,'max'=>500,'step'=>1),
@@ -1453,20 +1770,24 @@ function dream2_mxin_settings_registry() {
         'card_opacity'=>array('min'=>0,'max'=>100,'step'=>5,'suffix'=>'%'),
         'background_image_opacity'=>array('min'=>0,'max'=>100,'step'=>5,'suffix'=>'%'),
     );
-    $passwords = array('smtp_password');
+    $passwords = array('smtp_password','ai_api_key');
+    $user_selects = array('ai_user_id');
     $emoji_groups = array('comment_emoji_groups');
     $repeaters = array('carousel_options','module_options','custom_stats','custom_options');
     $defaults = array(
-        'document_hidden_title'=>'你别走呀 (´；ω；`)','document_visible_title'=>'欢迎回来 (｡･ω･｡)','enable_image_bg'=>'1','card_opacity'=>60,'background_image_opacity'=>60,'enable_banner'=>'1','banner_description'=>get_bloginfo('description'),'theme_style'=>'default','default_theme'=>'system','theme_color'=>'#50bfff','night_theme_color'=>'#5d93db','font_preset'=>'system','sidebar_column'=>'only-right','left_sidebar_sticky'=>'top','right_sidebar_sticky'=>'top','thumbnail_mode'=>'default','top_thumbnail_mode'=>'back','drawer_toc'=>'1','code_pretty'=>'atom-one-light','code_fold_line'=>20,'img_fold_height'=>400,'show_img_name'=>'1','invalid_tips_day'=>99999999,'enable_katex'=>'0','enable_copyright'=>'1','enable_post_share'=>'1','enable_private_comment'=>'1',
+        'site_favicon_size'=>'wordpress','document_hidden_title'=>'你别走呀 (´；ω；`)','document_visible_title'=>'欢迎回来 (｡･ω･｡)','enable_image_bg'=>'1','card_opacity'=>60,'background_image_opacity'=>60,'enable_banner'=>'1','banner_description'=>get_bloginfo('description'),'theme_style'=>'default','default_theme'=>'system','theme_color'=>'#50bfff','night_theme_color'=>'#5d93db','font_preset'=>'system','sidebar_column'=>'only-right','left_sidebar_sticky'=>'top','right_sidebar_sticky'=>'top','thumbnail_mode'=>'default','top_thumbnail_mode'=>'back','drawer_toc'=>'1','code_pretty'=>'atom-one-light','code_fold_line'=>20,'img_fold_height'=>400,'show_img_name'=>'1','invalid_tips_day'=>99999999,'enable_katex'=>'0','enable_copyright'=>'1','enable_post_share'=>'1','enable_private_comment'=>'1',
         'custom_stats'=>array(
             array('type'=>'post'),
             array('type'=>'category'),
             array('type'=>'tag'),
         ),
         'custom_options'=>array(),
-        'notice_show_mode'=>'default','recent_posts_num'=>'5','recent_comments_num'=>'5','categories_num'=>'10','tags_num'=>'18','tagcloud_num'=>'32','enable_hitokoto'=>'0','hitokoto_category'=>'all','enable_archivers_route'=>'1','archivers_route_slug'=>'archivers','link_takeover_categories'=>'1','link_friend_category'=>dream2_mxin_default_link_category_id('友情链接'),'link_one_way_category'=>dream2_mxin_default_link_category_id('单向友链'),'link_lost_category'=>dream2_mxin_default_link_category_id('失联博客'),'enable_auto_link_check'=>'0','link_check_interval'=>'daily','link_check_batch_size'=>3,'link_check_failure_threshold'=>3,'link_auto_move_one_way'=>'0','link_auto_move_lost'=>'0','link_one_way_notice_days'=>1,'link_one_way_delete_days'=>7,'link_notify_recovered'=>'0','link_notify_one_way_reminder'=>'0','link_notify_one_way_deleted'=>'0','link_notify_lost'=>'0','enable_smtp'=>'0','smtp_port'=>587,'smtp_secure'=>'tls','smtp_from_email'=>get_option('admin_email'),'smtp_from_name'=>get_bloginfo('name'),'email_notify_post_author'=>'1','email_notify_moderator'=>'1','email_notify_reply'=>'0','link_enable_comment'=>'1','enable_link_application'=>'1','show_exchange_info'=>'1','links_blogger_name'=>get_bloginfo('name'),'links_blogger_url'=>home_url('/'),'links_blogger_description'=>get_bloginfo('description'),'load_progress'=>'none','avatar_privacy'=>'1','cursor_style'=>'none','cursor_move'=>'none','cursor_click'=>'none','effects_lantern_mode'=>'none','effects_sakura_mode'=>'none','effects_snowflake_mode'=>'none','effects_universe_mode'=>'none','effects_circle_magic_mode'=>'none'
+        'notice_show_mode'=>'default','recent_posts_num'=>'5','recent_comments_num'=>'5','categories_num'=>'10','tags_num'=>'18','tagcloud_num'=>'32','enable_hitokoto'=>'0','hitokoto_category'=>'all','enable_archivers_route'=>'1','archivers_route_slug'=>'archivers','link_takeover_categories'=>'1','link_friend_category'=>dream2_mxin_default_link_category_id('友情链接'),'link_one_way_category'=>dream2_mxin_default_link_category_id('单向友链'),'link_lost_category'=>dream2_mxin_default_link_category_id('失联博客'),'enable_auto_link_check'=>'0','link_check_interval'=>'daily','link_check_batch_size'=>3,'link_check_failure_threshold'=>3,'link_auto_move_one_way'=>'0','link_auto_move_lost'=>'0','link_one_way_notice_days'=>1,'link_one_way_delete_days'=>7,'link_notify_recovered'=>'0','link_notify_one_way_reminder'=>'0','link_notify_one_way_deleted'=>'0','link_notify_lost'=>'0','enable_smtp'=>'0','smtp_port'=>587,'smtp_secure'=>'tls','smtp_from_email'=>get_option('admin_email'),'smtp_from_name'=>get_bloginfo('name'),'email_notify_post_author'=>'1','email_notify_moderator'=>'1','email_notify_reply'=>'0','link_enable_comment'=>'1','enable_link_application'=>'1','link_application_blacklist'=>'','show_exchange_info'=>'1','links_blogger_name'=>get_bloginfo('name'),'links_blogger_url'=>home_url('/'),'links_blogger_description'=>get_bloginfo('description'),'load_progress'=>'none','avatar_privacy'=>'1','cursor_style'=>'none','cursor_move'=>'none','cursor_click'=>'none','effects_lantern_mode'=>'none','effects_sakura_mode'=>'none','effects_snowflake_mode'=>'none','effects_universe_mode'=>'none','effects_circle_magic_mode'=>'none',
+        'ai_provider'=>'openai','ai_base_url'=>'https://api.openai.com/v1','ai_model'=>'','ai_search_prompt'=>dream2_mxin_default_ai_search_prompt(),'ai_summary_prompt'=>dream2_mxin_default_ai_summary_prompt(),'enable_ai_search'=>'1','enable_article_summary'=>'1','ai_user_id'=>0
     );
     $selects = array(
+        'site_favicon_size'=>dream2_mxin_site_icon_size_choices(),
+        'ai_provider'=>array('openai'=>'OpenAI','deepseek'=>'DeepSeek','glm'=>'GLM','custom'=>'自定义兼容服务'),
         'load_progress'=>array('none'=>'关闭','left'=>'左侧展开','center'=>'居中展开'),
         'theme_style'=>array('default'=>'默认','clean'=>'简洁'),
         'default_theme'=>array('system'=>'跟随系统','light'=>'明亮','night'=>'黑暗'),
@@ -1502,7 +1823,7 @@ function dream2_mxin_settings_registry() {
     foreach ($definitions as $group => $list) {
         foreach (explode(',', $list) as $definition) {
             list($name, $label) = explode('|', $definition, 2);
-            $type = in_array($name, $emoji_groups, true) ? 'emoji_groups' : (in_array($name, $repeaters, true) ? 'repeater' : (in_array($name, $images, true) ? 'image' : (in_array($name, $textareas, true) ? 'textarea' : (in_array($name, $dates, true) ? 'date' : (in_array($name, $urls, true) ? 'url' : (in_array($name, $emails, true) ? 'email' : (in_array($name, $passwords, true) ? 'password' : (isset($ranges[$name]) ? 'range' : (isset($numbers[$name]) ? 'number' : (isset($radios[$name]) ? 'radio' : (isset($selects[$name]) ? 'select' : (in_array($name, array('theme_color','night_theme_color'), true) ? 'color' : 'text'))))))))))));
+            $type = in_array($name, $user_selects, true) ? 'user_select' : (in_array($name, $emoji_groups, true) ? 'emoji_groups' : (in_array($name, $repeaters, true) ? 'repeater' : (in_array($name, $images, true) ? 'image' : (in_array($name, $textareas, true) ? 'textarea' : (in_array($name, $dates, true) ? 'date' : (in_array($name, $urls, true) ? 'url' : (in_array($name, $emails, true) ? 'email' : (in_array($name, $passwords, true) ? 'password' : (isset($ranges[$name]) ? 'range' : (isset($numbers[$name]) ? 'number' : (isset($radios[$name]) ? 'radio' : (isset($selects[$name]) ? 'select' : (in_array($name, array('theme_color','night_theme_color'), true) ? 'color' : 'text')))))))))))));
             $registry[$name] = array('group'=>$group,'label'=>$label,'type'=>$type,'default'=>$defaults[$name] ?? ($type === 'repeater' ? array() : ''),'choices'=>$selects[$name] ?? ($radios[$name] ?? array()),'attributes'=>$ranges[$name] ?? ($numbers[$name] ?? array()),'boolean'=>in_array($name,$toggles,true));
         }
     }
@@ -1518,6 +1839,9 @@ function dream2_get($key, $fallback = null) {
         if ($key === 'sidebar_column') return dream2_mxin_normalize_sidebar_column($options[$key]);
         return $options[$key];
     }
+    if ($key === 'ai_provider') {
+        return dream2_mxin_ai_provider_for_base_url($options['ai_base_url'] ?? '');
+    }
     $legacy = array('document_hidden_title'=>'dream2_hidden_title','document_visible_title'=>'dream2_visible_title','index_inform'=>'dream2_index_notice','record_number'=>'dream2_record_number','record_number_moe'=>'dream2_moe_record_number','record_number_ps'=>'dream2_public_record','website_time'=>'dream2_website_time','background_pc'=>'dream2_background_pc','background_mobile'=>'dream2_background_mobile','night_background_pc'=>'dream2_night_background_pc','banner_image'=>'dream2_banner_image','banner_description'=>'dream2_banner_description','theme_style'=>'dream2_theme_style','default_theme'=>'dream2_default_theme','theme_color'=>'dream2_theme_color','night_theme_color'=>'dream2_night_theme_color','sidebar_column'=>'dream2_layout','default_thumbnail'=>'dream2_default_thumbnail','thumbnail_mode'=>'dream2_thumbnail_mode','inline_css'=>'dream2_inline_css');
     $default = null !== $fallback ? $fallback : ($registry[$key]['default'] ?? '');
     $value = isset($legacy[$key]) ? get_theme_mod($legacy[$key], $default) : $default;
@@ -1526,6 +1850,32 @@ function dream2_get($key, $fallback = null) {
     if ($key === 'sidebar_column') return dream2_mxin_normalize_sidebar_column($value);
     return $value;
 }
+
+function dream2_mxin_selected_site_icon_size() {
+    $selection = (string) dream2_get('site_favicon_size', 'wordpress');
+    if ($selection === 'wordpress' || !preg_match('/^size-(\d+)$/', $selection, $matches)) {
+        return 0;
+    }
+
+    $choices = dream2_mxin_site_icon_size_choices();
+    return isset($choices[$selection]) ? absint($matches[1]) : 0;
+}
+
+function dream2_mxin_override_favicon() {
+    $size = dream2_mxin_selected_site_icon_size();
+    if (!$size) {
+        return;
+    }
+
+    $url = get_site_icon_url($size);
+    if (!$url) {
+        return;
+    }
+
+    wp_redirect($url, 302, 'Dream2');
+    exit;
+}
+add_action('do_favicon', 'dream2_mxin_override_favicon', 1);
 
 function dream2_mxin_normalize_sidebar_column($value) {
     $legacy = array(
@@ -1764,17 +2114,18 @@ function dream2_mxin_retry_comment_mail($comment_id, $type) {
     update_comment_meta($comment_id, $attempts_key, $attempts);
     $retry_delays = array(5 * MINUTE_IN_SECONDS, 30 * MINUTE_IN_SECONDS);
     $args = array($comment_id, $type);
+    $mail_context = dream2_mxin_comment_mail_log_context($comment_id, $type);
 
     if (isset($retry_delays[$attempts - 1])) {
         if (wp_next_scheduled('dream2_mxin_async_comment_mail', $args)) {
-            dream2_mxin_mail_log_event(array(
+            dream2_mxin_mail_log_event(array_merge($mail_context, array(
                 'channel'   => 'comment',
                 'mail_type' => $type,
                 'source_id' => $comment_id,
                 'status'    => 'retry_scheduled',
                 'attempt'   => $attempts + 1,
                 'detail'    => '重试任务已存在',
-            ));
+            )));
             return true;
         }
         $scheduled = wp_schedule_single_event(
@@ -1783,7 +2134,7 @@ function dream2_mxin_retry_comment_mail($comment_id, $type) {
             $args
         );
         if (!is_wp_error($scheduled) && $scheduled) {
-            dream2_mxin_mail_log_event(array(
+            dream2_mxin_mail_log_event(array_merge($mail_context, array(
                 'channel'   => 'comment',
                 'mail_type' => $type,
                 'source_id' => $comment_id,
@@ -1793,14 +2144,14 @@ function dream2_mxin_retry_comment_mail($comment_id, $type) {
                     '%d 分钟后重试',
                     (int) ($retry_delays[$attempts - 1] / MINUTE_IN_SECONDS)
                 ),
-            ));
+            )));
             return true;
         }
     }
 
     update_comment_meta($comment_id, $failed_key, current_time('mysql'));
     delete_comment_meta($comment_id, $queued_key);
-    dream2_mxin_mail_log_event(array(
+    dream2_mxin_mail_log_event(array_merge($mail_context, array(
         'channel'   => 'comment',
         'mail_type' => $type,
         'source_id' => $comment_id,
@@ -1809,8 +2160,19 @@ function dream2_mxin_retry_comment_mail($comment_id, $type) {
         'detail'    => isset($retry_delays[$attempts - 1])
             ? '重试任务排队失败'
             : '已达到最大重试次数',
-    ));
+    )));
     return false;
+}
+
+function dream2_mxin_defer_comment_mail_cron_spawn() {
+    static $registered = false;
+    if ($registered || !function_exists('spawn_cron')) {
+        return;
+    }
+    $registered = true;
+    add_action('shutdown', static function () {
+        spawn_cron(time());
+    }, PHP_INT_MAX);
 }
 
 function dream2_mxin_queue_comment_mail($comment_id, $type) {
@@ -1831,6 +2193,10 @@ function dream2_mxin_queue_comment_mail($comment_id, $type) {
     if ($type === 'reply' && (!dream2_enabled('email_notify_reply') || empty($comment->comment_parent))) {
         return false;
     }
+    $mail_context = dream2_mxin_comment_mail_log_context($comment, $type);
+    if (!$mail_context) {
+        return false;
+    }
     $sent_key = dream2_mxin_comment_mail_meta_key($type, 'sent');
     $queued_key = dream2_mxin_comment_mail_meta_key($type, 'queued');
     if (!$sent_key || get_comment_meta($comment_id, $sent_key, true) || get_comment_meta($comment_id, $queued_key, true)) {
@@ -1846,7 +2212,7 @@ function dream2_mxin_queue_comment_mail($comment_id, $type) {
     if (is_wp_error($scheduled) || !$scheduled) {
         delete_comment_meta($comment_id, $queued_key);
         update_comment_meta($comment_id, dream2_mxin_comment_mail_meta_key($type, 'failed'), current_time('mysql'));
-        dream2_mxin_mail_log_event(array(
+        dream2_mxin_mail_log_event(array_merge($mail_context, array(
             'channel'   => 'comment',
             'mail_type' => $type,
             'source_id' => $comment_id,
@@ -1855,20 +2221,18 @@ function dream2_mxin_queue_comment_mail($comment_id, $type) {
             'detail'    => is_wp_error($scheduled)
                 ? $scheduled->get_error_message()
                 : 'WP-Cron 任务创建失败',
-        ));
+        )));
         return false;
     }
-    dream2_mxin_mail_log_event(array(
+    dream2_mxin_mail_log_event(array_merge($mail_context, array(
         'channel'   => 'comment',
         'mail_type' => $type,
         'source_id' => $comment_id,
         'status'    => 'queued',
         'attempt'   => 1,
         'detail'    => '等待 WP-Cron 发送',
-    ));
-    if (function_exists('spawn_cron')) {
-        spawn_cron(time());
-    }
+    )));
+    dream2_mxin_defer_comment_mail_cron_spawn();
     return true;
 }
 
@@ -1919,47 +2283,20 @@ function dream2_mxin_comment_mail_recipients($comment, $type) {
     return $emails;
 }
 
-function dream2_mxin_send_queued_comment_mail($comment_id, $type) {
-    $comment_id = absint($comment_id);
-    $comment = get_comment($comment_id);
+function dream2_mxin_comment_mail_payload($comment, $type) {
     if (!$comment || !in_array($type, array('post_author', 'moderator', 'reply'), true)) {
-        return false;
-    }
-    if ($type !== 'moderator' && (string) $comment->comment_approved !== '1') {
-        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
-        return false;
-    }
-    if ($type === 'moderator' && (string) $comment->comment_approved !== '0') {
-        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
-        return false;
-    }
-    if ($type === 'post_author' && !dream2_enabled('email_notify_post_author', true)) {
-        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
-        return false;
-    }
-    if ($type === 'moderator' && !dream2_enabled('email_notify_moderator', true)) {
-        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
-        return false;
-    }
-    if ($type === 'reply' && !dream2_enabled('email_notify_reply')) {
-        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
-        return false;
-    }
-
-    $sent_key = dream2_mxin_comment_mail_meta_key($type, 'sent');
-    if (!$sent_key || get_comment_meta($comment->comment_ID, $sent_key, true)) {
-        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
-        return false;
+        return array();
     }
 
     $recipients = dream2_mxin_comment_mail_recipients($comment, $type);
     if (!$recipients) {
-        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
-        return false;
+        return array();
     }
 
     $post = get_post($comment->comment_post_ID);
-    $post_title = $post ? wp_specialchars_decode(get_the_title($post), ENT_QUOTES) : wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
+    $post_title = $post
+        ? wp_specialchars_decode(get_the_title($post), ENT_QUOTES)
+        : wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
     $site_name = wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES);
     $comment_time = get_comment_date('Y-m-d H:i:s', $comment);
     $rows = array(
@@ -2015,11 +2352,72 @@ function dream2_mxin_send_queued_comment_mail($comment_id, $type) {
         );
     }
 
+    return array(
+        'recipients' => $recipients,
+        'subject'    => $subject,
+        'message'    => $message,
+        'headers'    => dream2_mxin_mail_headers(),
+    );
+}
+
+function dream2_mxin_comment_mail_log_context($comment, $type) {
+    $comment = is_object($comment) ? $comment : get_comment(absint($comment));
+    $payload = dream2_mxin_comment_mail_payload($comment, $type);
+    if (!$payload) {
+        return array();
+    }
+    return array(
+        'sender'     => dream2_mxin_mail_log_sender_from_headers($payload['headers']),
+        'recipients' => dream2_mxin_mail_log_all_recipients($payload['recipients'], $payload['headers']),
+        'subject'    => $payload['subject'],
+        'content'    => $payload['message'],
+    );
+}
+
+function dream2_mxin_send_queued_comment_mail($comment_id, $type) {
+    $comment_id = absint($comment_id);
+    $comment = get_comment($comment_id);
+    if (!$comment || !in_array($type, array('post_author', 'moderator', 'reply'), true)) {
+        return false;
+    }
+    if ($type !== 'moderator' && (string) $comment->comment_approved !== '1') {
+        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
+        return false;
+    }
+    if ($type === 'moderator' && (string) $comment->comment_approved !== '0') {
+        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
+        return false;
+    }
+    if ($type === 'post_author' && !dream2_enabled('email_notify_post_author', true)) {
+        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
+        return false;
+    }
+    if ($type === 'moderator' && !dream2_enabled('email_notify_moderator', true)) {
+        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
+        return false;
+    }
+    if ($type === 'reply' && !dream2_enabled('email_notify_reply')) {
+        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
+        return false;
+    }
+
+    $sent_key = dream2_mxin_comment_mail_meta_key($type, 'sent');
+    if (!$sent_key || get_comment_meta($comment->comment_ID, $sent_key, true)) {
+        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
+        return false;
+    }
+
+    $payload = dream2_mxin_comment_mail_payload($comment, $type);
+    if (!$payload) {
+        dream2_mxin_clear_comment_mail_queue_state($comment->comment_ID, $type);
+        return false;
+    }
+
     $sent = dream2_mxin_send_logged_mail(
-        $recipients,
-        $subject,
-        $message,
-        dream2_mxin_mail_headers(),
+        $payload['recipients'],
+        $payload['subject'],
+        $payload['message'],
+        $payload['headers'],
         array(
             'channel'   => 'comment',
             'mail_type' => $type,
@@ -2149,6 +2547,279 @@ function dream2_mxin_strip_deprecated_options($options) {
     return $options;
 }
 
+function dream2_mxin_sanitize_secret($value) {
+    if (!is_scalar($value)) {
+        return '';
+    }
+    $value = preg_replace('/[\x00-\x1F\x7F]/', '', (string) $value);
+    return substr((string) $value, 0, 4096);
+}
+
+function dream2_mxin_sanitize_ai_system_prompt($value) {
+    if (!is_scalar($value)) {
+        return '';
+    }
+    $value = wp_check_invalid_utf8((string) $value);
+    $value = str_replace(array("\r\n", "\r", "\0"), array("\n", "\n", ''), $value);
+    $value = preg_replace('/[\x01-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $value);
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        return mb_strlen($value, 'UTF-8') > 20000 ? mb_substr($value, 0, 20000, 'UTF-8') : $value;
+    }
+    $characters = preg_split('//u', $value, 20001, PREG_SPLIT_NO_EMPTY);
+    return is_array($characters) && count($characters) > 20000
+        ? implode('', array_slice($characters, 0, 20000))
+        : $value;
+}
+
+function dream2_mxin_sanitize_ai_model($value) {
+    if (!is_scalar($value)) {
+        return '';
+    }
+    return substr(sanitize_text_field((string) $value), 0, 255);
+}
+
+function dream2_mxin_sanitize_openai_base_url($value) {
+    if (!is_scalar($value)) {
+        return '';
+    }
+    $url = esc_url_raw(trim((string) $value), array('https'));
+    if ($url === '') {
+        return '';
+    }
+    $parts = wp_parse_url($url);
+    if (!is_array($parts)
+        || strtolower((string) ($parts['scheme'] ?? '')) !== 'https'
+        || empty($parts['host'])
+        || isset($parts['user'])
+        || isset($parts['pass'])
+        || isset($parts['query'])
+        || isset($parts['fragment'])) {
+        return '';
+    }
+    return untrailingslashit($url);
+}
+
+function dream2_mxin_resolve_ai_base_url($provider, $base_url) {
+    $provider = is_scalar($provider) ? sanitize_key((string) $provider) : '';
+    $provider_base_urls = dream2_mxin_ai_provider_base_urls();
+    if (isset($provider_base_urls[$provider])) {
+        return $provider_base_urls[$provider];
+    }
+    if ($provider === 'custom') {
+        $base_url = dream2_mxin_sanitize_openai_base_url($base_url);
+        return $base_url !== ''
+            ? $base_url
+            : new WP_Error('dream2_ai_missing_base_url', '请填写有效的 HTTPS Base URL。');
+    }
+    return new WP_Error('dream2_ai_invalid_provider', 'API 服务无效。');
+}
+
+function dream2_mxin_ai_connection_fingerprint($provider, $base_url, $api_key) {
+    $base_url = dream2_mxin_resolve_ai_base_url($provider, $base_url);
+    if (is_wp_error($base_url)) {
+        return '';
+    }
+    $api_key = dream2_mxin_sanitize_secret($api_key);
+    if ($api_key === '') {
+        return '';
+    }
+    return hash_hmac(
+        'sha256',
+        sanitize_key((string) $provider) . "\n" . $base_url . "\n" . $api_key,
+        wp_salt('nonce')
+    );
+}
+
+function dream2_mxin_ai_connection_matches_options($input, $options) {
+    $input = is_array($input) ? $input : array();
+    $options = is_array($options) ? $options : array();
+
+    $stored_provider = isset($options['ai_provider'])
+        ? sanitize_key((string) $options['ai_provider'])
+        : dream2_mxin_ai_provider_for_base_url($options['ai_base_url'] ?? '');
+    $submitted_provider = isset($input['ai_provider']) && is_scalar($input['ai_provider'])
+        ? sanitize_key(wp_unslash($input['ai_provider']))
+        : $stored_provider;
+    if ($submitted_provider !== $stored_provider) {
+        return false;
+    }
+
+    $stored_base_url = dream2_mxin_resolve_ai_base_url($stored_provider, $options['ai_base_url'] ?? '');
+    $submitted_base_url = dream2_mxin_resolve_ai_base_url(
+        $submitted_provider,
+        isset($input['ai_base_url']) && is_scalar($input['ai_base_url'])
+            ? wp_unslash($input['ai_base_url'])
+            : ($options['ai_base_url'] ?? '')
+    );
+    if (is_wp_error($stored_base_url)
+        || is_wp_error($submitted_base_url)
+        || $submitted_base_url !== $stored_base_url) {
+        return false;
+    }
+
+    $stored_api_key = dream2_mxin_sanitize_secret($options['ai_api_key'] ?? '');
+    $submitted_api_key = isset($input['ai_api_key']) && is_scalar($input['ai_api_key'])
+        ? dream2_mxin_sanitize_secret(wp_unslash($input['ai_api_key']))
+        : $stored_api_key;
+    $stored_model = dream2_mxin_sanitize_ai_model($options['ai_model'] ?? '');
+    $submitted_model = isset($input['ai_model']) && is_scalar($input['ai_model'])
+        ? dream2_mxin_sanitize_ai_model(wp_unslash($input['ai_model']))
+        : $stored_model;
+
+    return hash_equals($stored_api_key, $submitted_api_key)
+        && hash_equals($stored_model, $submitted_model);
+}
+
+function dream2_mxin_check_ai_connection($provider, $base_url, $api_key) {
+    $base_url = dream2_mxin_resolve_ai_base_url($provider, $base_url);
+    if (is_wp_error($base_url)) {
+        return $base_url;
+    }
+    $api_key = dream2_mxin_sanitize_secret($api_key);
+    if ($api_key === '') {
+        return new WP_Error('dream2_ai_missing_api_key', '请填写 API Key。');
+    }
+
+    $response = wp_safe_remote_get(
+        trailingslashit($base_url) . 'models',
+        array(
+            'headers' => array(
+                'Accept'        => 'application/json',
+                'Authorization' => 'Bearer ' . $api_key,
+            ),
+            'timeout'             => 15,
+            'redirection'         => 0,
+            'limit_response_size' => 1024 * 1024,
+            'user-agent'          => 'Dream2-MXIN/' . (defined('DREAM2_MXIN_VERSION') ? DREAM2_MXIN_VERSION : 'unknown'),
+        )
+    );
+    if (is_wp_error($response)) {
+        return new WP_Error('dream2_ai_connection_failed', '连接失败：' . $response->get_error_message());
+    }
+
+    $status = (int) wp_remote_retrieve_response_code($response);
+    $body = (string) wp_remote_retrieve_body($response);
+    $payload = json_decode($body, true);
+    if ($status < 200 || $status >= 300) {
+        $message = is_array($payload) ? (string) ($payload['error']['message'] ?? $payload['message'] ?? '') : '';
+        $message = sanitize_text_field($message);
+        if ($status === 401 || $status === 403) {
+            $message = '鉴权失败，请检查 API Key。';
+        } elseif ($status === 404) {
+            $message = '模型接口不存在，请检查 Base URL。';
+        } elseif ($message === '') {
+            $message = '服务返回 HTTP ' . $status . '。';
+        }
+        return new WP_Error('dream2_ai_http_error', '连接失败：' . $message);
+    }
+    if (!is_array($payload) || !isset($payload['data']) || !is_array($payload['data'])) {
+        return new WP_Error('dream2_ai_invalid_response', '连接成功，但返回结果不符合 OpenAI 模型列表协议。');
+    }
+
+    $models = array();
+    foreach ($payload['data'] as $model) {
+        $model_id = is_array($model) ? dream2_mxin_sanitize_ai_model($model['id'] ?? '') : '';
+        if ($model_id !== '') {
+            $models[] = $model_id;
+        }
+    }
+    $models = array_values(array_unique($models));
+    natcasesort($models);
+    $models = array_values($models);
+    if (!$models) {
+        return new WP_Error('dream2_ai_empty_models', '连接成功，但接口未返回可用模型。');
+    }
+    $model_count = count($models);
+    $models = array_slice($models, 0, 500);
+
+    return array(
+        'message' => $model_count > count($models)
+            ? sprintf('连接成功，获取到 %d 个模型，显示前 %d 个。', $model_count, count($models))
+            : sprintf('连接成功，获取到 %d 个模型。', $model_count),
+        'models'  => $models,
+    );
+}
+
+function dream2_mxin_create_ai_test_token($provider, $base_url, $api_key, $models) {
+    $fingerprint = dream2_mxin_ai_connection_fingerprint($provider, $base_url, $api_key);
+    if ($fingerprint === '') {
+        return new WP_Error('dream2_ai_invalid_test_state', '测试配置无效。');
+    }
+    $models = array_values(array_unique(array_filter(array_map('dream2_mxin_sanitize_ai_model', (array) $models))));
+    if (!$models) {
+        return new WP_Error('dream2_ai_empty_models', '接口未返回可保存的模型。');
+    }
+
+    $token = wp_generate_uuid4();
+    $stored = set_transient(
+        'dream2_ai_test_' . md5(get_current_user_id() . '|' . $token),
+        array(
+            'user_id'     => get_current_user_id(),
+            'fingerprint' => $fingerprint,
+            'models'      => $models,
+        ),
+        30 * MINUTE_IN_SECONDS
+    );
+    return $stored ? $token : new WP_Error('dream2_ai_test_state_failed', '测试成功，但测试状态保存失败。');
+}
+
+function dream2_mxin_verify_ai_test_token($input, $token) {
+    $token = is_scalar($token) ? sanitize_key((string) $token) : '';
+    if ($token === '') {
+        return new WP_Error('dream2_ai_test_required', '请先测试连接成功后再保存 AI 配置。');
+    }
+
+    $transient_key = 'dream2_ai_test_' . md5(get_current_user_id() . '|' . $token);
+    $state = get_transient($transient_key);
+    if (!is_array($state) || (int) ($state['user_id'] ?? 0) !== get_current_user_id()) {
+        return new WP_Error('dream2_ai_test_expired', '连接测试已失效，请重新测试后保存。');
+    }
+
+    $provider = isset($input['ai_provider']) && is_scalar($input['ai_provider']) ? wp_unslash($input['ai_provider']) : '';
+    $base_url = isset($input['ai_base_url']) && is_scalar($input['ai_base_url']) ? wp_unslash($input['ai_base_url']) : '';
+    $api_key = isset($input['ai_api_key']) && is_scalar($input['ai_api_key']) ? wp_unslash($input['ai_api_key']) : '';
+    $fingerprint = dream2_mxin_ai_connection_fingerprint($provider, $base_url, $api_key);
+    if ($fingerprint === '' || !hash_equals((string) ($state['fingerprint'] ?? ''), $fingerprint)) {
+        return new WP_Error('dream2_ai_test_mismatch', 'API 连接配置已变化，请重新测试后保存。');
+    }
+
+    $model = dream2_mxin_sanitize_ai_model($input['ai_model'] ?? '');
+    if ($model === '' || !in_array($model, (array) ($state['models'] ?? array()), true)) {
+        return new WP_Error('dream2_ai_model_not_tested', '请选择本次连接测试返回的模型。');
+    }
+
+    delete_transient($transient_key);
+    return true;
+}
+
+function dream2_mxin_handle_ai_connection_test() {
+    if (!current_user_can('edit_theme_options')) {
+        wp_send_json_error(array('message' => '权限不足。'), 403);
+    }
+    check_ajax_referer('dream2_mxin_test_ai_connection', 'nonce');
+
+    $provider = isset($_POST['provider']) && is_scalar($_POST['provider']) ? sanitize_key(wp_unslash($_POST['provider'])) : '';
+    $base_url = isset($_POST['base_url']) && is_scalar($_POST['base_url']) ? wp_unslash($_POST['base_url']) : '';
+    $has_api_key = isset($_POST['api_key']) && is_scalar($_POST['api_key']);
+    $api_key = $has_api_key ? dream2_mxin_sanitize_secret(wp_unslash($_POST['api_key'])) : '';
+    if (!$has_api_key) {
+        $options = get_option('dream2_options', array());
+        $api_key = is_array($options) ? (string) ($options['ai_api_key'] ?? '') : '';
+    }
+
+    $result = dream2_mxin_check_ai_connection($provider, $base_url, $api_key);
+    if (is_wp_error($result)) {
+        wp_send_json_error(array('message' => $result->get_error_message()), 400);
+    }
+    $test_token = dream2_mxin_create_ai_test_token($provider, $base_url, $api_key, $result['models']);
+    if (is_wp_error($test_token)) {
+        wp_send_json_error(array('message' => $test_token->get_error_message()), 500);
+    }
+    $result['test_token'] = $test_token;
+    wp_send_json_success($result);
+}
+add_action('wp_ajax_dream2_mxin_test_ai_connection', 'dream2_mxin_handle_ai_connection_test');
+
 function dream2_mxin_sanitize_options($input) {
     $input = is_array($input) ? $input : array();
     $clean = get_option('dream2_options', array());
@@ -2157,6 +2828,15 @@ function dream2_mxin_sanitize_options($input) {
     $submitted_fields = array_keys(dream2_mxin_settings_registry());
     if (isset($_POST['dream2_options_fields'])) {
         $submitted_fields = array_filter(array_map('sanitize_key', explode(',', wp_unslash($_POST['dream2_options_fields']))));
+    }
+    if (in_array('ai_provider', $submitted_fields, true)
+        && !dream2_mxin_ai_connection_matches_options($input, $clean)) {
+        $test_token = isset($_POST['dream2_ai_test_token']) ? wp_unslash($_POST['dream2_ai_test_token']) : '';
+        $test_result = dream2_mxin_verify_ai_test_token($input, $test_token);
+        if (is_wp_error($test_result)) {
+            add_settings_error('dream2_options', $test_result->get_error_code(), $test_result->get_error_message(), 'error');
+            return $clean;
+        }
     }
     foreach (dream2_mxin_settings_registry() as $name => $field) {
         if (!in_array($name, $submitted_fields, true)) {
@@ -2168,11 +2848,25 @@ function dream2_mxin_sanitize_options($input) {
             $value = wp_unslash($input[$name]);
             if ($name === 'load_progress') $value = dream2_mxin_normalize_load_progress($value);
             if ($name === 'enable_hitokoto') $value = dream2_mxin_normalize_hitokoto_mode($value);
-            if ($field['type'] === 'email') $clean[$name] = sanitize_email($value);
+            if ($name === 'ai_user_id') {
+                $user_id = absint($value);
+                if ($user_id > 0 && !get_user_by('id', $user_id)) {
+                    add_settings_error('dream2_options', 'dream2_ai_user_not_found', '关联账户不存在，已取消关联。', 'error');
+                    $user_id = 0;
+                }
+                $clean[$name] = $user_id;
+            }
+            elseif ($name === 'ai_api_key') $clean[$name] = dream2_mxin_sanitize_secret($value);
+            elseif ($field['type'] === 'email') $clean[$name] = sanitize_email($value);
             elseif (in_array($name, array('link_friend_category', 'link_one_way_category', 'link_lost_category'), true)) $clean[$name] = absint($value);
             elseif ($name === 'archivers_route_slug') $clean[$name] = sanitize_title($value) ?: 'archivers';
             elseif ($field['type'] === 'color') $clean[$name] = sanitize_hex_color($value);
             elseif ($field['type'] === 'date') $clean[$name] = preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $value) ? (string) $value : '';
+            elseif ($name === 'ai_model') $clean[$name] = dream2_mxin_sanitize_ai_model($value);
+            elseif ($name === 'ai_system_prompt') $clean[$name] = dream2_mxin_sanitize_ai_system_prompt($value);
+            elseif ($name === 'ai_search_prompt' || $name === 'ai_summary_prompt') $clean[$name] = dream2_mxin_ai_feature_prompt_value($name, dream2_mxin_sanitize_ai_system_prompt($value));
+            elseif ($name === 'ai_base_url') $clean[$name] = dream2_mxin_sanitize_openai_base_url($value);
+            elseif ($name === 'link_application_blacklist') $clean[$name] = dream2_mxin_normalize_link_application_blacklist($value);
             elseif ($field['type'] === 'image' || str_ends_with($name, '_url')) $clean[$name] = esc_url_raw($value);
             elseif ($field['type'] === 'emoji_groups') $clean[$name] = dream2_mxin_sanitize_comment_emoji_groups($value);
             elseif ($field['type'] === 'textarea') $clean[$name] = current_user_can('unfiltered_html') ? $value : wp_kses_post($value);
@@ -2189,6 +2883,13 @@ function dream2_mxin_sanitize_options($input) {
     }
     if (isset($clean['link_enable_comment']) && (string) $clean['link_enable_comment'] !== '1') {
         $clean['enable_link_application'] = '0';
+    }
+    if (in_array('ai_provider', $submitted_fields, true)) {
+        $provider = isset($clean['ai_provider']) ? sanitize_key($clean['ai_provider']) : 'openai';
+        $provider_base_urls = dream2_mxin_ai_provider_base_urls();
+        if (isset($provider_base_urls[$provider])) {
+            $clean['ai_base_url'] = $provider_base_urls[$provider];
+        }
     }
     if (isset($clean['link_one_way_notice_days'], $clean['link_one_way_delete_days'])) {
         $clean['link_one_way_delete_days'] = max(
@@ -2231,6 +2932,10 @@ add_action('admin_enqueue_scripts', function ($hook) {
         return;
     }
     wp_enqueue_media(); wp_enqueue_style('wp-color-picker'); wp_enqueue_script('wp-color-picker');
+    $settings_page = isset($_GET['page']) && is_scalar($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : '';
+    if (in_array($settings_page, array('dream2-settings-communication', 'dream2-settings-ai'), true)) {
+        wp_enqueue_script('user-profile');
+    }
     $admin_dream_css = get_template_directory() . '/assets/css/admin-dream.css';
     wp_enqueue_style('dream2-admin-dream', get_template_directory_uri() . '/assets/css/admin-dream.css', array(), file_exists($admin_dream_css) ? (string) filemtime($admin_dream_css) : DREAM2_MXIN_VERSION);
     wp_enqueue_style('dream2-admin-emoji', get_template_directory_uri() . '/assets/css/admin-emoji.css', array(), DREAM2_MXIN_VERSION);
@@ -2313,6 +3018,7 @@ JS);
 function dream2_mxin_render_settings_page() {
     if (!current_user_can('edit_theme_options')) return;
     $groups = dream2_mxin_settings_groups(); $registry = dream2_mxin_settings_registry(); $options = get_option('dream2_options', array());
+    $ai_provider_base_urls = dream2_mxin_ai_provider_base_urls();
     $link_fields = dream2_mxin_link_settings_fields();
     $page = isset($_GET['page']) ? sanitize_key(wp_unslash($_GET['page'])) : 'dream2-settings';
     $active_group = array_key_first($groups);
@@ -2347,6 +3053,7 @@ function dream2_mxin_render_settings_page() {
     <header class="dream2-options-header"><h1>梦屿主题设置</h1><span class="dream2-version">版本 <?php echo esc_html(DREAM2_MXIN_VERSION); ?></span></header>
     <form method="post" action="options.php"><?php settings_fields('dream2_options_group'); ?>
     <input type="hidden" name="dream2_options_fields" value="<?php echo esc_attr(implode(',', $submitted_fields)); ?>">
+    <?php if($active_group === 'ai'): ?><input type="hidden" name="dream2_ai_test_token" value="" data-dream-ai-test-token><?php endif; ?>
     <div class="dream2-options-layout is-sidebar-extracted">
         <div class="dream2-options-content">
         <?php
@@ -2362,30 +3069,99 @@ function dream2_mxin_render_settings_page() {
         <section class="dream2-settings-subgroup">
         <h3><?php echo esc_html($subgroup['label']); ?></h3>
         <div class="dream2-option-group"><div class="dream2-option-grid">
-        <?php foreach($subgroup['fields'] as $name): $field=$registry[$name]; $value=array_key_exists($name,$options)?$options[$name]:$field['default']; if($name==='load_progress') $value = dream2_mxin_normalize_load_progress($value); if($name==='enable_hitokoto') $value = dream2_mxin_normalize_hitokoto_mode($value); ?>
+        <?php foreach($subgroup['fields'] as $name): $field=$registry[$name]; $value=array_key_exists($name,$options)?$options[$name]:$field['default']; if(in_array($name,array('ai_search_prompt','ai_summary_prompt'),true)) $value=dream2_mxin_ai_feature_prompt_value($name,$value); if($name==='ai_provider' && !array_key_exists($name,$options)) $value = dream2_mxin_ai_provider_for_base_url($options['ai_base_url'] ?? ''); if($name==='load_progress') $value = dream2_mxin_normalize_load_progress($value); if($name==='enable_hitokoto') $value = dream2_mxin_normalize_hitokoto_mode($value); ?>
         <?php if($field['type']==='emoji_groups'): $emoji_value = function_exists('dream2_mxin_comment_emoji_groups') ? dream2_mxin_comment_emoji_groups() : (array_key_exists($name,$options) && is_array($value) ? $value : dream2_mxin_default_emoji_groups()); ?><div class="dream2-option dream2-option-wide"><label><strong><?php echo esc_html($field['label']); ?></strong></label><div class="dream2-emoji-manager" data-groups="<?php echo esc_attr(wp_json_encode($emoji_value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>"><input class="dream2-emoji-data" type="hidden" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr(wp_json_encode($emoji_value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)); ?>"><input class="dream2-emoji-files" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/avif" multiple hidden><div class="dream2-emoji-groups"></div><div class="dream2-emoji-actions"><button type="button" class="button dream2-emoji-add-group">添加分组</button><button type="button" class="button dream2-emoji-import-files">导入表情</button><button type="button" class="button dream2-emoji-scan">扫描目录</button></div></div></div>
         <?php elseif($field['type']==='repeater'): $repeater_items = dream2_mxin_normalize_repeater($value, $name); $repeater_max = dream2_mxin_repeater_max($name); ?><div class="dream2-option dream2-option-wide"><label><strong><?php echo esc_html($field['label']); ?></strong></label><div class="dream2-repeater" data-dream-repeater="<?php echo esc_attr($name); ?>" data-max="<?php echo esc_attr($repeater_max); ?>"><div class="dream2-repeater-items" data-dream-repeater-items><?php foreach($repeater_items as $item_index=>$item) dream2_mxin_render_repeater_item($name,$item_index,$item); ?></div><div class="dream2-repeater-actions"><button type="button" class="button" data-dream-repeater-add>添加项目</button></div><template data-dream-repeater-template><?php dream2_mxin_render_repeater_item($name,'__INDEX__'); ?></template></div></div>
-        <?php else: $is_custom_font_field = in_array($name, array('web_font', 'custom_font'), true); $color_enabled = !empty($options['enable_color_character']); $hitokoto_mode = dream2_mxin_normalize_hitokoto_mode($options['enable_hitokoto'] ?? '0'); $hitokoto_enabled = $color_enabled && $hitokoto_mode !== '0'; $hitokoto_custom = $hitokoto_enabled && $hitokoto_mode === 'custom'; $option_attrs = $is_custom_font_field ? ' data-dream-font-custom' : ''; if ($name === 'color_character') $option_attrs .= ' data-dream-color-character-field'; if ($name === 'hitokoto_category') $option_attrs .= ' data-dream-hitokoto-field'; if ($name === 'hitokoto_custom_url') $option_attrs .= ' data-dream-hitokoto-custom-field'; ?><div class="dream2-option<?php echo $field['type'] === 'textarea' ? ' dream2-option-wide' : ''; ?>"<?php echo $option_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><label for="dream2-<?php echo esc_attr($name); ?>"><strong><?php echo esc_html($field['label']); ?></strong></label>
-        <?php if($field['type']==='select'): $is_hitokoto_select_disabled = $name === 'hitokoto_category' && (!$hitokoto_enabled || $hitokoto_custom); ?><select id="dream2-<?php echo esc_attr($name); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]"<?php echo $name === 'font_preset' ? ' data-dream-font-preset' : ''; ?><?php echo $is_hitokoto_select_disabled ? ' disabled aria-disabled="true"' : ''; ?>><?php foreach($field['choices'] as $choice=>$choice_label): ?><option value="<?php echo esc_attr($choice); ?>" <?php selected($name === 'font_preset' ? $font_preset_value : $value,$choice); ?>><?php echo esc_html($choice_label); ?></option><?php endforeach; ?></select>
+        <?php else: $is_custom_font_field = in_array($name, array('web_font', 'custom_font'), true); $color_enabled = !empty($options['enable_color_character']); $hitokoto_mode = dream2_mxin_normalize_hitokoto_mode($options['enable_hitokoto'] ?? '0'); $hitokoto_enabled = $color_enabled && $hitokoto_mode !== '0'; $hitokoto_custom = $hitokoto_enabled && $hitokoto_mode === 'custom'; $option_attrs = $is_custom_font_field ? ' data-dream-font-custom' : ''; if ($name === 'color_character') $option_attrs .= ' data-dream-color-character-field'; if ($name === 'hitokoto_category') $option_attrs .= ' data-dream-hitokoto-field'; if ($name === 'hitokoto_custom_url') $option_attrs .= ' data-dream-hitokoto-custom-field'; ?><div class="dream2-option<?php echo $field['type'] === 'textarea' ? ' dream2-option-wide' : ''; ?>"<?php echo $option_attrs; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>><label for="<?php echo esc_attr($field['type'] === 'password' ? 'mailserver_pass' : 'dream2-' . $name); ?>"><strong><?php echo esc_html($field['label']); ?></strong></label>
+        <?php if($field['type']==='user_select'): $user_choices = dream2_mxin_ai_user_choices(); ?><select id="dream2-<?php echo esc_attr($name); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]"><?php foreach($user_choices as $choice=>$choice_label): ?><option value="<?php echo esc_attr($choice); ?>" <?php selected((string) $value,(string) $choice); ?>><?php echo esc_html($choice_label); ?></option><?php endforeach; ?></select>
+        <?php elseif($name==='ai_model'): ?><select id="dream2-ai_model" name="dream2_options[ai_model]" data-dream-ai-model><option value=""><?php echo (string) $value === '' ? '请先测试连接' : '请选择模型'; ?></option><?php if((string) $value !== ''): ?><option value="<?php echo esc_attr($value); ?>" selected><?php echo esc_html($value); ?></option><?php endif; ?></select>
+        <?php elseif($field['type']==='select'): $is_hitokoto_select_disabled = $name === 'hitokoto_category' && (!$hitokoto_enabled || $hitokoto_custom); ?><select id="dream2-<?php echo esc_attr($name); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]"<?php echo $name === 'font_preset' ? ' data-dream-font-preset' : ''; ?><?php echo $name === 'ai_provider' ? ' data-dream-ai-provider' : ''; ?><?php echo $is_hitokoto_select_disabled ? ' disabled aria-disabled="true"' : ''; ?>><?php foreach($field['choices'] as $choice=>$choice_label): ?><option value="<?php echo esc_attr($choice); ?>" <?php selected($name === 'font_preset' ? $font_preset_value : $value,$choice); ?>><?php echo esc_html($choice_label); ?></option><?php endforeach; ?></select>
         <?php elseif($field['type']==='radio'): $radio_value = !empty($field['boolean']) ? (filter_var($value,FILTER_VALIDATE_BOOLEAN)?'1':'0') : (string)$value; ?><div class="dream2-radio-group"><?php foreach($field['choices'] as $choice=>$choice_label): ?><label><input type="radio" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($choice); ?>" <?php checked($radio_value,(string)$choice); ?>> <span><?php echo esc_html($choice_label); ?></span></label><?php endforeach; ?><?php if (isset($platform_notes[$name])) : ?><span class="dream2-help-tooltip" tabindex="0" aria-label="<?php echo esc_attr($platform_notes[$name]); ?>" data-tooltip="<?php echo esc_attr($platform_notes[$name]); ?>">?</span><?php endif; ?></div>
         <?php elseif($field['type']==='range'): $range_suffix = (string) ($field['attributes']['suffix'] ?? ''); ?><div class="dream2-range-field"><input id="dream2-<?php echo esc_attr($name); ?>" type="range" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($value); ?>" min="<?php echo esc_attr($field['attributes']['min'] ?? 0); ?>" max="<?php echo esc_attr($field['attributes']['max'] ?? 100); ?>" step="<?php echo esc_attr($field['attributes']['step'] ?? 1); ?>" data-dream-range data-suffix="<?php echo esc_attr($range_suffix); ?>"><output for="dream2-<?php echo esc_attr($name); ?>"><?php echo esc_html((string) $value . $range_suffix); ?></output></div>
         <?php elseif($field['type']==='number'): ?><input id="dream2-<?php echo esc_attr($name); ?>" class="regular-text" type="number" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($value); ?>" min="<?php echo esc_attr($field['attributes']['min'] ?? 0); ?>"<?php echo isset($field['attributes']['max']) ? ' max="' . esc_attr($field['attributes']['max']) . '"' : ''; ?> step="<?php echo esc_attr($field['attributes']['step'] ?? 1); ?>">
-        <?php elseif($field['type']==='textarea'): $is_hitokoto_disabled_field = $name === 'color_character' && (!$color_enabled || $hitokoto_enabled); ?><textarea id="dream2-<?php echo esc_attr($name); ?>" class="large-text code" rows="4" name="dream2_options[<?php echo esc_attr($name); ?>]"<?php echo $is_hitokoto_disabled_field ? ' disabled aria-disabled="true"' : ''; ?>><?php echo esc_textarea($value); ?></textarea>
+        <?php elseif($field['type']==='textarea'): $is_hitokoto_disabled_field = $name === 'color_character' && (!$color_enabled || $hitokoto_enabled); $is_ai_prompt = in_array($name, array('ai_system_prompt', 'ai_search_prompt', 'ai_summary_prompt'), true); $is_feature_prompt = in_array($name, array('ai_search_prompt', 'ai_summary_prompt'), true); $textarea_rows = $name === 'ai_system_prompt' ? 10 : ($is_ai_prompt ? 7 : 4); ?><?php if ($is_ai_prompt) : ?><div class="dream2-ai-system-prompt-frame"><?php endif; ?><textarea id="dream2-<?php echo esc_attr($name); ?>" class="large-text code" rows="<?php echo esc_attr((string) $textarea_rows); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]"<?php echo $is_hitokoto_disabled_field ? ' disabled aria-disabled="true"' : ''; ?><?php echo $is_feature_prompt ? ' readonly aria-readonly="true"' : ''; ?>><?php echo esc_textarea($value); ?></textarea><?php if ($is_ai_prompt) : ?></div><?php endif; ?><?php if ($is_feature_prompt) : ?><button type="button" class="button dream2-ai-prompt-edit" data-dream-ai-prompt-edit="dream2-<?php echo esc_attr($name); ?>" data-prompt-label="<?php echo esc_attr($field['label']); ?>" aria-haspopup="dialog" aria-controls="dream2-ai-prompt-dialog">编辑提示词</button><p class="description">默认只读。清空并保存会恢复默认提示词；修改后相关缓存将重新生成。</p><?php elseif ($name === 'ai_system_prompt') : ?><p class="description">角色卡可选；配置后同时用于站内问答和文章总结，留空时不发送角色设定。</p><?php endif; ?>
         <?php elseif($field['type']==='date'): ?><input id="dream2-<?php echo esc_attr($name); ?>" class="regular-text dream2-date-picker-only" type="date" inputmode="none" autocomplete="off" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($value); ?>">
         <?php elseif($field['type']==='image'): ?><div class="dream2-hoshi-media-field"><input id="dream2-<?php echo esc_attr($name); ?>" class="regular-text" type="url" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($value); ?>"><button type="button" class="button dream2-media-button" data-target="dream2-<?php echo esc_attr($name); ?>">上传文件</button></div>
+        <?php elseif($field['type']==='password'): ?><div class="mailserver-pass-wrap"><span class="wp-pwd"><input id="mailserver_pass" class="regular-text ltr" type="password" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($value); ?>" autocomplete="off" autocapitalize="off" spellcheck="false"><button type="button" class="button wp-hide-pw hide-if-no-js" data-toggle="0" aria-label="显示密码"><span class="dashicons dashicons-visibility" aria-hidden="true"></span><span class="text">显示</span></button></span></div>
         <?php else: $is_hitokoto_url_disabled = $name === 'hitokoto_custom_url' && (!$hitokoto_enabled || !$hitokoto_custom); $input_type = in_array($field['type'], array('url', 'email', 'password'), true) ? $field['type'] : 'text'; ?><input id="dream2-<?php echo esc_attr($name); ?>" class="<?php echo $field['type']==='color'?'dream2-color':'regular-text'; ?>" type="<?php echo esc_attr($input_type); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($value); ?>"<?php echo $is_custom_font_field && $font_preset_value !== 'custom' ? ' readonly' : ''; ?><?php echo $is_hitokoto_url_disabled ? ' disabled aria-disabled="true"' : ''; ?>>
         <?php endif; ?></div><?php endif; ?>
-        <?php endforeach; ?></div></div></section>
+        <?php endforeach; ?>
+        <?php if($group === 'ai' && in_array('ai_provider', $subgroup['fields'], true)): ?><div class="dream2-option dream2-option-wide dream2-ai-test"><button type="button" class="button" data-dream-ai-test data-nonce="<?php echo esc_attr(wp_create_nonce('dream2_mxin_test_ai_connection')); ?>"><span class="dashicons dashicons-controls-repeat" aria-hidden="true"></span><span>测试并获取模型</span></button><span class="spinner" aria-hidden="true"></span><span class="dream2-ai-test-result" role="status" aria-live="polite"></span></div><?php endif; ?>
+        </div></div></section>
         <?php endforeach; ?>
         </div>
         </section>
         </div>
     </div>
-    <div class="dream2-options-actions"><?php echo get_submit_button('保存主题设置', 'primary', 'submit', false); ?></div></form></div>
+    <div class="dream2-options-actions"><?php echo get_submit_button('保存主题设置', 'primary', 'submit', false, $active_group === 'ai' ? array('data-dream-ai-save'=>'') : array()); ?></div></form>
+    <?php if ($active_group === 'ai') : ?><dialog id="dream2-ai-prompt-dialog" class="dream2-ai-prompt-dialog" aria-labelledby="dream2-ai-prompt-dialog-title"><h2 id="dream2-ai-prompt-dialog-title">确认编辑<span data-dream-ai-prompt-name></span>？</h2><p>修改内置提示词可能削弱角色一致性、站内资料约束与防注入要求，导致回答不准确或泄露内部信息。不要在提示词中写入密钥。</p><div class="dream2-ai-prompt-dialog-actions"><button type="button" class="button" data-dream-ai-prompt-cancel>取消</button><button type="button" class="button button-primary" data-dream-ai-prompt-confirm>了解风险，继续编辑</button></div></dialog><?php endif; ?></div>
     <script>
     jQuery(function($){
+        var aiProviderBaseUrls=<?php echo wp_json_encode($ai_provider_base_urls, JSON_UNESCAPED_SLASHES); ?>;
+        var promptDialog=document.getElementById('dream2-ai-prompt-dialog'),pendingPrompt=null,pendingEditButton=null;
+        function unlockFeaturePrompt(){
+            if(!pendingPrompt||!pendingEditButton){return}
+            pendingPrompt.readOnly=false;
+            pendingPrompt.removeAttribute('aria-readonly');
+            pendingEditButton.textContent='已解锁编辑';
+            pendingEditButton.disabled=true;
+            pendingPrompt.focus();
+            pendingPrompt=null;
+            pendingEditButton=null
+        }
+        $(document).on('click','[data-dream-ai-prompt-edit]',function(){
+            var field=document.getElementById(this.dataset.dreamAiPromptEdit);
+            if(!field||!field.readOnly){return}
+            pendingPrompt=field;
+            pendingEditButton=this;
+            if(promptDialog&&typeof promptDialog.showModal==='function'){
+                promptDialog.querySelector('[data-dream-ai-prompt-name]').textContent=this.dataset.promptLabel||'提示词';
+                promptDialog.showModal()
+            }else if(window.confirm('修改内置提示词可能影响角色口吻、内容准确性和安全约束。不要写入密钥。确认继续编辑？')){
+                unlockFeaturePrompt()
+            }else{pendingPrompt=null;pendingEditButton=null}
+        });
+        $(document).on('click','[data-dream-ai-prompt-confirm]',function(){
+            var field=pendingPrompt;
+            unlockFeaturePrompt();
+            if(promptDialog){promptDialog.close()}
+            if(field){field.focus()}
+        });
+        $(document).on('click','[data-dream-ai-prompt-cancel]',function(){
+            if(promptDialog){promptDialog.close()}
+            pendingPrompt=null;
+            pendingEditButton=null
+        });
+        if(promptDialog){promptDialog.addEventListener('close',function(){pendingPrompt=null;pendingEditButton=null})}
         function initDreamColors(){
             if($.fn.wpColorPicker){$('.dream2-color').wpColorPicker()}
+        }
+        function resetAiModels(){
+            $('[data-dream-ai-model]').empty().append($('<option>',{value:'',text:'请先测试连接'}))
+        }
+        function populateAiModels(models){
+            var select=$('[data-dream-ai-model]'),current=select.val()||'';
+            select.empty().append($('<option>',{value:'',text:'请选择模型'}));
+            $.each(models||[],function(_,model){select.append($('<option>',{value:model,text:model}))});
+            select.val(models.indexOf(current)!==-1?current:(models[0]||''))
+        }
+        function syncAiProvider(resetModels){
+            var provider=$('[data-dream-ai-provider]').val();
+            var baseUrl=$('#dream2-ai_base_url');
+            if(!baseUrl.length){return}
+            if(aiProviderBaseUrls[provider]){
+                baseUrl.val(aiProviderBaseUrls[provider]).prop('readonly',true).attr('aria-readonly','true')
+            }else{
+                baseUrl.prop('readonly',false).removeAttr('aria-readonly')
+            }
+            if(resetModels){resetAiModels()}
+        }
+        function setAiTestResult(message,state){
+            $('[data-dream-ai-test]').closest('.dream2-ai-test').find('.dream2-ai-test-result').text(message||'').removeClass('is-success is-error').addClass(state?'is-'+state:'')
+        }
+        function resetAiVerification(){
+            $('[data-dream-ai-test-token]').val('');
+            $('[data-dream-ai-save]').prop('disabled',true)
         }
         function toggleDreamFontFields(){
             var custom=$('[data-dream-font-preset]').val()==='custom';
@@ -2410,6 +3186,7 @@ function dream2_mxin_render_settings_page() {
             repeater.find('[data-dream-repeater-add]').prop('disabled',max>0&&items.length>=max);
         }
         initDreamColors();
+        syncAiProvider(false);
         toggleDreamFontFields();
         toggleHitokotoFields();
         $('[data-dream-range]').each(function(){
@@ -2417,6 +3194,37 @@ function dream2_mxin_render_settings_page() {
         });
         $('.dream2-repeater').each(function(){refreshRepeater($(this))});
         $(window).on('load',initDreamColors);
+        $('[data-dream-ai-provider]').on('change',function(){syncAiProvider(true);resetAiVerification();setAiTestResult('','')});
+        $(document).on('input','#dream2-ai_base_url,#mailserver_pass',function(){resetAiModels();resetAiVerification();setAiTestResult('','')});
+        $(document).on('click','[data-dream-ai-test]',function(){
+            var button=$(this),container=button.closest('.dream2-ai-test'),spinner=container.find('.spinner');
+            button.prop('disabled',true);
+            spinner.addClass('is-active');
+            resetAiVerification();
+            setAiTestResult('正在测试连接...','');
+            $.post(ajaxurl,{
+                action:'dream2_mxin_test_ai_connection',
+                nonce:button.data('nonce'),
+                provider:$('#dream2-ai_provider').val()||'',
+                base_url:$('#dream2-ai_base_url').val()||'',
+                api_key:$('#mailserver_pass').val()||''
+            }).done(function(response){
+                var message=response&&response.data&&response.data.message?response.data.message:'连接成功。';
+                if(response&&response.success){
+                    populateAiModels(response.data.models||[]);
+                    $('[data-dream-ai-test-token]').val(response.data.test_token||'');
+                    $('[data-dream-ai-save]').prop('disabled',!response.data.test_token)
+                }
+                setAiTestResult(message,response&&response.success?'success':'error')
+            }).fail(function(xhr){
+                var response=xhr.responseJSON;
+                var message=response&&response.data&&response.data.message?response.data.message:'连接失败，请稍后重试。';
+                setAiTestResult(message,'error')
+            }).always(function(){
+                button.prop('disabled',false);
+                spinner.removeClass('is-active')
+            })
+        });
         $('[data-dream-font-preset]').on('change',toggleDreamFontFields);
         $(document).on('input change','[data-dream-range]',function(){
             $(this).next('output').text(this.value+($(this).data('suffix')||''))
@@ -2510,7 +3318,7 @@ function dream2_mxin_render_link_settings_page() {
     <?php elseif(in_array($name, array('link_friend_category', 'link_one_way_category', 'link_lost_category'), true)): ?><select id="dream2-<?php echo esc_attr($name); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]"><?php if ($name === 'link_one_way_category') : ?><option value="0" <?php selected((int) $value, 0); ?>>未设置</option><?php endif; ?><?php foreach($all_link_terms as $term): ?><option value="<?php echo esc_attr((string) $term->term_id); ?>" <?php selected((int) $value, (int) $term->term_id); ?>><?php echo esc_html($term->name); ?></option><?php endforeach; ?></select>
     <?php elseif($field['type']==='select'): ?><select id="dream2-<?php echo esc_attr($name); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]"><?php foreach($field['choices'] as $choice=>$choice_label): ?><option value="<?php echo esc_attr((string) $choice); ?>" <?php selected((string) $value, (string) $choice); ?>><?php echo esc_html($choice_label); ?></option><?php endforeach; ?></select>
     <?php elseif($field['type']==='number'): ?><input id="dream2-<?php echo esc_attr($name); ?>" class="small-text" type="number" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr((string) $value); ?>" min="<?php echo esc_attr((string) ($field['attributes']['min'] ?? 0)); ?>" max="<?php echo esc_attr((string) ($field['attributes']['max'] ?? '')); ?>" step="<?php echo esc_attr((string) ($field['attributes']['step'] ?? 1)); ?>">
-    <?php elseif($field['type']==='textarea'): ?><textarea id="dream2-<?php echo esc_attr($name); ?>" class="large-text code" rows="6" name="dream2_options[<?php echo esc_attr($name); ?>]"><?php echo esc_textarea($value); ?></textarea>
+    <?php elseif($field['type']==='textarea'): ?><textarea id="dream2-<?php echo esc_attr($name); ?>" class="large-text code" rows="6" name="dream2_options[<?php echo esc_attr($name); ?>]"<?php echo $name === 'link_application_blacklist' ? ' placeholder="每行一个域名，例如 example.com"' : ''; ?>><?php echo esc_textarea($value); ?></textarea><?php if ($name === 'link_application_blacklist') : ?><p class="description">仅拦截已填写的域名；www 前缀不作区分，例如 www.mxin.me 与 mxin.me 视为同一域名。</p><?php endif; ?>
     <?php elseif($field['type']==='image'): ?><div class="dream2-hoshi-media-field"><input id="dream2-<?php echo esc_attr($name); ?>" class="regular-text" type="url" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($value); ?>"><button type="button" class="button dream2-media-button" data-target="dream2-<?php echo esc_attr($name); ?>">选择媒体</button></div>
     <?php else: $input_type = in_array($field['type'], array('url', 'email', 'password'), true) ? $field['type'] : 'text'; ?><input id="dream2-<?php echo esc_attr($name); ?>" class="regular-text" type="<?php echo esc_attr($input_type); ?>" name="dream2_options[<?php echo esc_attr($name); ?>]" value="<?php echo esc_attr($value); ?>">
     <?php endif; ?></div><?php endforeach; ?></div></div></section>

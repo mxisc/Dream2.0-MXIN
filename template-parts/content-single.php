@@ -9,8 +9,10 @@ $thumbnail = dream2_mxin_post_thumbnail_url();
 $tips = get_post_meta(get_the_ID(), '_dream2_tips', true);
 $invalid_days = absint(dream2_get('invalid_tips_day', 0));
 $updated_days = (int) floor((current_time('timestamp') - get_post_modified_time('U')) / DAY_IN_SECONDS);
+$summary_available = get_post_type() === 'post' && dream2_mxin_article_summary_context(get_the_ID())
+    && !is_wp_error(dream2_mxin_site_ai_configuration());
 ?>
-<article id="post-<?php the_ID(); ?>" <?php post_class(); ?>>
+<article id="post-<?php the_ID(); ?>" <?php post_class(); ?><?php if ($summary_available) : ?> data-dream-article-summary-post="<?php echo esc_attr((string) get_the_ID()); ?>" data-dream-article-summary-endpoint="<?php echo esc_url(rest_url('dream2-mxin/v1/article-summary')); ?>" data-dream-article-summary-stream-endpoint="<?php echo esc_url(admin_url('admin-post.php')); ?>" data-dream-article-summary-nonce="<?php echo esc_attr(wp_create_nonce('dream2_mxin_article_summary')); ?>"<?php endif; ?>>
     <?php if ($thumbnail) : ?>
         <div class="card widget">
             <div class="cover-image dream-single-cover" style="background-image:url('<?php echo esc_url($thumbnail); ?>')">
@@ -34,6 +36,12 @@ $updated_days = (int) floor((current_time('timestamp') - get_post_modified_time(
                 <h1 class="title"><?php the_title(); ?></h1>
                 <div class="meta"><?php dream2_mxin_post_meta(); ?><?php if (get_post_type() === 'post') dream2_mxin_category_links(); ?></div>
                 <hr>
+            <?php endif; ?>
+            <?php if ($summary_available && dream2_enabled('enable_article_summary', true)) : ?>
+                <section class="dream-article-summary" aria-label="AI 文章总结">
+                    <div class="dream-article-summary-head"><span><i class="ri-sparkling-2-line" aria-hidden="true"></i> AI 总结</span><button type="button" data-dream-article-summary-retry hidden>重试</button></div>
+                    <p data-dream-article-summary-text role="status">正在总结这篇文章…</p>
+                </section>
             <?php endif; ?>
             <div class="main-content article">
                 <?php the_content(); ?>

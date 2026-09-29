@@ -1,6 +1,6 @@
 <?php
 /**
- * Temporary diagnostics for Dream2 mail delivery.
+ * Mail delivery records for Dream2 notifications.
  *
  * @package Dream2_MXIN
  */
@@ -13,6 +13,7 @@ const DREAM2_MXIN_MAIL_LOG_OPTION = 'dream2_mxin_mail_log';
 const DREAM2_MXIN_MAIL_LOG_LOCK = 'dream2_mxin_mail_log_lock';
 const DREAM2_MXIN_MAIL_LOG_LIMIT = 500;
 const DREAM2_MXIN_MAIL_LOG_RETENTION_DAYS = 30;
+const DREAM2_MXIN_MAIL_LOG_CONTENT_LIMIT = 6000;
 
 function dream2_mxin_mail_log_recipients($recipients) {
     $emails = array();
@@ -29,6 +30,95 @@ function dream2_mxin_mail_log_recipients($recipients) {
         }
     }
     return array_values(array_unique($emails));
+}
+
+function dream2_mxin_mail_log_all_recipients($recipients, $headers = array()) {
+    $header_lines = is_array($headers)
+        ? $headers
+        : preg_split('/\r?\n/', (string) $headers);
+    foreach ($header_lines as $header) {
+        if (preg_match('/^(?:cc|bcc):\s*(.+)$/i', trim((string) $header), $matches)) {
+            $recipients = array_merge((array) $recipients, array($matches[1]));
+        }
+    }
+    return dream2_mxin_mail_log_recipients($recipients);
+}
+
+function dream2_mxin_mail_log_sender($sender) {
+    $sender = is_array($sender) ? $sender : array();
+    $email = sanitize_email($sender['email'] ?? '');
+    return array(
+        'name'  => sanitize_text_field((string) ($sender['name'] ?? '')),
+        'email' => $email && is_email($email) ? strtolower($email) : '',
+    );
+}
+
+function dream2_mxin_mail_log_sender_from_headers($headers = array()) {
+    $host = (string) wp_parse_url(network_home_url(), PHP_URL_HOST);
+    if (str_starts_with($host, 'www.')) {
+        $host = substr($host, 4);
+    }
+    $sender = array(
+        'name'  => 'WordPress',
+        'email' => 'wordpress@' . ($host ?: 'localhost.localdomain'),
+    );
+    $header_lines = is_array($headers)
+        ? $headers
+        : preg_split('/\r?\n/', (string) $headers);
+
+    foreach ($header_lines as $header) {
+        if (!preg_match('/^from:\s*(.+)$/i', trim((string) $header), $matches)) {
+            continue;
+        }
+        $from = trim($matches[1]);
+        if (preg_match('/^(.*?)<([^>]+)>$/', $from, $parts)) {
+            $sender['name'] = trim($parts[1], " \t\n\r\0\x0B\"'");
+            $sender['email'] = trim($parts[2]);
+        } else {
+            $sender['email'] = $from;
+        }
+        break;
+    }
+
+    $sender['email'] = apply_filters('wp_mail_from', $sender['email']);
+    $sender['name'] = apply_filters('wp_mail_from_name', $sender['name']);
+    return dream2_mxin_mail_log_sender($sender);
+}
+
+function dream2_mxin_mail_log_content($message) {
+    $message = preg_replace(
+        '/<(?:br\s*\/?|\/p|\/div|\/td|\/th|\/tr|\/li|\/table|\/h[1-6])\s*>/i',
+        "\n",
+        (string) $message
+    );
+    $charset = get_bloginfo('charset') ?: 'UTF-8';
+    $message = html_entity_decode(wp_strip_all_tags($message), ENT_QUOTES | ENT_HTML5, $charset);
+    $message = sanitize_textarea_field(str_replace(array("\r\n", "\r"), "\n", $message));
+    $message = preg_replace('/[ \t]+\n/', "\n", $message);
+    $message = trim((string) preg_replace('/\n{3,}/', "\n\n", $message));
+
+    if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+        return mb_strlen($message) > DREAM2_MXIN_MAIL_LOG_CONTENT_LIMIT
+            ? mb_substr($message, 0, DREAM2_MXIN_MAIL_LOG_CONTENT_LIMIT) . '...'
+            : $message;
+    }
+    $characters = preg_split('//u', $message, -1, PREG_SPLIT_NO_EMPTY);
+    if (is_array($characters)) {
+        return count($characters) > DREAM2_MXIN_MAIL_LOG_CONTENT_LIMIT
+            ? implode('', array_slice($characters, 0, DREAM2_MXIN_MAIL_LOG_CONTENT_LIMIT)) . '...'
+            : $message;
+    }
+    return strlen($message) > DREAM2_MXIN_MAIL_LOG_CONTENT_LIMIT
+        ? substr($message, 0, DREAM2_MXIN_MAIL_LOG_CONTENT_LIMIT) . '...'
+        : $message;
+}
+
+function dream2_mxin_mail_log_sender_text($sender) {
+    $sender = dream2_mxin_mail_log_sender($sender);
+    if ($sender['name'] && $sender['email']) {
+        return sprintf('%s <%s>', $sender['name'], $sender['email']);
+    }
+    return $sender['email'] ?: $sender['name'];
 }
 
 function dream2_mxin_mail_log_trim_text($value, $length = 240) {
@@ -104,8 +194,10 @@ function dream2_mxin_mail_log_event($data) {
             'mail_type'  => sanitize_key($data['mail_type'] ?? ''),
             'status'     => $status,
             'source_id'  => absint($data['source_id'] ?? 0),
+            'sender'     => dream2_mxin_mail_log_sender($data['sender'] ?? array()),
             'recipients' => dream2_mxin_mail_log_recipients($data['recipients'] ?? array()),
             'subject'    => dream2_mxin_mail_log_trim_text($data['subject'] ?? ''),
+            'content'    => dream2_mxin_mail_log_content($data['content'] ?? ''),
             'attempt'    => max(0, absint($data['attempt'] ?? 0)),
             'detail'     => dream2_mxin_mail_log_trim_text($data['detail'] ?? ''),
         );
@@ -144,6 +236,8 @@ function dream2_mxin_send_logged_mail(
     $headers = array(),
     $context = array()
 ) {
+    $sender = dream2_mxin_mail_log_sender_from_headers($headers);
+    $logged_recipients = dream2_mxin_mail_log_all_recipients($recipients, $headers);
     $GLOBALS['dream2_mxin_mail_log_active'] = true;
     $GLOBALS['dream2_mxin_mail_log_error'] = '';
     try {
@@ -159,8 +253,10 @@ function dream2_mxin_send_logged_mail(
     unset($GLOBALS['dream2_mxin_mail_log_error']);
     dream2_mxin_mail_log_event(array_merge($context, array(
         'status'     => $sent ? 'sent' : 'send_failed',
-        'recipients' => $recipients,
+        'sender'     => $sender,
+        'recipients' => $logged_recipients,
         'subject'    => $subject,
+        'content'    => $message,
         'detail'     => $sent
             ? 'wp_mail() 返回成功'
             : ($error_message ?: 'wp_mail() 返回失败'),
@@ -304,32 +400,44 @@ function dream2_mxin_render_mail_log_page() {
                             <th>时间</th>
                             <th>类型</th>
                             <th>状态</th>
+                            <th>发件人</th>
                             <th>收件人</th>
-                            <th>主题 / 详情</th>
+                            <th>主题 / 邮件内容</th>
                             <th>来源</th>
                             <th>尝试</th>
                         </tr>
                     </thead>
                     <tbody>
                     <?php if (!$page_entries) : ?>
-                        <tr><td colspan="7">暂无匹配的邮件记录。</td></tr>
+                        <tr><td colspan="8">暂无匹配的邮件记录。</td></tr>
                     <?php else : ?>
                         <?php foreach ($page_entries as $entry) : ?>
                             <?php
                             $source_link = dream2_mxin_mail_log_source_link($entry);
                             $source_id = absint($entry['source_id'] ?? 0);
                             $source_label = ($entry['channel'] ?? '') === 'comment' ? '评论' : '友链';
+                            $sender_text = dream2_mxin_mail_log_sender_text($entry['sender'] ?? array());
                             $recipient_text = implode(', ', (array) ($entry['recipients'] ?? array()));
                             $subject_text = (string) ($entry['subject'] ?? '');
+                            $content_text = (string) ($entry['content'] ?? '');
                             $attempt = absint($entry['attempt'] ?? 0);
                             ?>
                             <tr>
                                 <td><?php echo esc_html((string) ($entry['created_at'] ?? '')); ?></td>
                                 <td><?php echo esc_html(dream2_mxin_mail_log_type_label($entry['channel'] ?? '', $entry['mail_type'] ?? '')); ?></td>
                                 <td><span class="dream2-mail-status is-<?php echo esc_attr((string) ($entry['status'] ?? '')); ?>"><?php echo esc_html(dream2_mxin_mail_log_status_label($entry['status'] ?? '')); ?></span></td>
-                                <td><?php echo esc_html($recipient_text ?: '—'); ?></td>
+                                <td class="dream2-mail-address"><?php echo esc_html($sender_text ?: '—'); ?></td>
+                                <td class="dream2-mail-address"><?php echo esc_html($recipient_text ?: '—'); ?></td>
                                 <td>
                                     <strong><?php echo esc_html($subject_text ?: '—'); ?></strong>
+                                    <?php if ($content_text) : ?>
+                                        <details class="dream2-mail-content-detail">
+                                            <summary><?php echo esc_html(dream2_mxin_mail_log_trim_text($content_text, 100)); ?></summary>
+                                            <pre><?php echo esc_html($content_text); ?></pre>
+                                        </details>
+                                    <?php elseif (!empty($entry['subject'])) : ?>
+                                        <small>旧记录未保存邮件内容</small>
+                                    <?php endif; ?>
                                     <?php if (!empty($entry['detail'])) : ?><small><?php echo esc_html((string) $entry['detail']); ?></small><?php endif; ?>
                                 </td>
                                 <td>
