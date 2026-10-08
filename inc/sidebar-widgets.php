@@ -719,7 +719,9 @@ function dream2_mxin_render_sidebar_widget_module($type, $module = array(), $wid
             $links = array_slice($links, 0, dream2_mxin_widget_number($module['links_limit'] ?? 10, 10, 1, 50));
             foreach ($links as $link) : ?>
                 <li><a href="<?php echo esc_url($link->link_url); ?>" target="_blank" rel="noopener" title="<?php echo esc_attr($link->link_name); ?>">
-                    <img src="<?php echo esc_url($link->link_image ?: dream2_get('links_default_avatar', dream2_mxin_asset('img/avatar.svg'))); ?>" alt="" loading="lazy" width="36" height="36">
+                    <?php $pending_avatar_token = ''; ?>
+                    <?php $protected_avatar = $link->link_image ? dream2_mxin_avatar_privacy_url('friend', $link->link_id . '|' . $link->link_image, $link->link_image, $pending_avatar_token) : ''; ?>
+                    <img class="not-gallery" src="<?php echo esc_url($protected_avatar ?: dream2_mxin_default_avatar_url()); ?>"<?php if ($pending_avatar_token) : ?> data-dream-avatar-token="<?php echo esc_attr($pending_avatar_token); ?>"<?php elseif (!$protected_avatar && $link->link_image) : ?> data-dream-avatar="<?php echo esc_url($link->link_image); ?>"<?php endif; ?> alt="" loading="lazy" width="36" height="36">
                     <span class="dream-sidebar-link-info"><strong><?php echo esc_html($link->link_name); ?></strong><?php if ($link->link_description !== '') : ?><small><?php echo esc_html($link->link_description); ?></small><?php endif; ?></span>
                 </a></li>
             <?php endforeach; ?>

@@ -2606,7 +2606,7 @@
                         document.dispatchEvent(new CustomEvent('dream2:page-leaving'));
                         currentSection.replaceWith(nextSection);
                         cleanupStyles();
-                        document.title = nextDocument.title;
+                        setPageTitle(nextDocument.title);
                         document.body.className = nextDocument.body.className;
                         syncPjaxShell(nextDocument);
                         if (push) {
@@ -2696,14 +2696,25 @@
         });
     }
 
+    var originalTitle = document.title;
+    var titleRestoreTimer = null;
+    function setPageTitle(title) {
+        window.clearTimeout(titleRestoreTimer);
+        titleRestoreTimer = null;
+        originalTitle = title;
+        document.title = title;
+    }
+
     if (Dream2WP.hiddenTitle || Dream2WP.visibleTitle) {
-        var originalTitle = document.title;
         document.addEventListener('visibilitychange', function () {
+            window.clearTimeout(titleRestoreTimer);
+            titleRestoreTimer = null;
             document.title = document.hidden ?
                 (Dream2WP.hiddenTitle || originalTitle) :
                 (Dream2WP.visibleTitle || originalTitle);
-            if (!document.hidden) {
-                window.setTimeout(function () {
+            if (!document.hidden && Dream2WP.visibleTitle) {
+                titleRestoreTimer = window.setTimeout(function () {
+                    titleRestoreTimer = null;
                     document.title = originalTitle;
                 }, 1600);
             }
