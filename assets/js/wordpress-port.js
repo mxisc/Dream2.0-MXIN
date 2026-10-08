@@ -128,7 +128,7 @@
             }
             var controller = new AbortController();
             var timeout = window.setTimeout(function () { controller.abort(); }, 70000);
-            var record = { article: article, promise: null, partial: '', target: '', listeners: typeof onProgress === 'function' ? [onProgress] : [], frame: 0, lastFrame: 0, characterBudget: 0, streamed: false };
+            var record = { article: article, promise: null, partial: '', target: '', listeners: typeof onProgress === 'function' ? [onProgress] : [], frame: 0, lastFrame: 0, characterBudget: 0 };
             function publish(partial) {
                 record.partial = partial;
                 record.listeners.forEach(function (listener) { listener(partial); });
@@ -147,7 +147,6 @@
                 record.frame = next < characters.length ? window.requestAnimationFrame(advance) : 0;
             }
             function queue(partial) {
-                record.streamed = true;
                 record.target = partial;
                 if (!record.frame) record.frame = window.requestAnimationFrame(advance);
             }
@@ -157,13 +156,12 @@
                     await new Promise(function (resolve) { window.setTimeout(resolve, 850); });
                     queue(summary);
                 }
-                if (!record.streamed) {
-                    publish(summary);
-                    return summary;
-                }
                 if (summary.indexOf(record.partial) !== 0) {
-                    publish(summary);
-                    return summary;
+                    if (record.frame) window.cancelAnimationFrame(record.frame);
+                    record.frame = 0;
+                    record.lastFrame = 0;
+                    record.characterBudget = 0;
+                    publish('');
                 }
                 record.target = summary;
                 if (!record.frame && record.partial !== summary) record.frame = window.requestAnimationFrame(advance);
@@ -1323,12 +1321,13 @@
     });
 
     var searchTimer = null;
+    var searchHasMore = false;
     var searchActiveIndex = -1;
     var aiSearchAbort = null;
     var aiSearchQuestion = '';
     var searchCommands = {
         help: function () {
-            return { title: '可用命令', detail: 'help · whoami · status · root' };
+            return { title: '可用命令', detail: '/help · /whoami · /status · /root' };
         },
         whoami: function () {
             var save = readVisitorSave();
@@ -1362,6 +1361,20 @@
         return Object.prototype.hasOwnProperty.call(searchCommands, command) ? searchCommands[command]() : null;
     }
 
+    function searchCommandSuggestions(query) {
+        var commands = [
+            { name: 'help', detail: '查看可用命令' },
+            { name: 'whoami', detail: '查看访客身份' },
+            { name: 'status', detail: '查看系统状态' },
+            { name: 'root', detail: '检查管理员权限' }
+        ];
+        if (Dream2WP.enhancerActive) commands.splice(3, 0, { name: 'quest', detail: '打开当前支线任务' });
+        var prefix = query.slice(1).toLowerCase();
+        return commands.filter(function (item) { return item.name.startsWith(prefix); }).map(function (item) {
+            return { title: '/' + item.name, detail: item.detail, command: true, commandName: item.name };
+        });
+    }
+
     function updateSearchActive(index) {
         var items = Array.prototype.slice.call(document.querySelectorAll('.dream-search-result'));
         if (!items.length) {
@@ -1381,6 +1394,32 @@
         if (results) results.classList.toggle('is-keyboarding', enabled);
     }
 
+    function syncSearchFooter() {
+        var card = document.querySelector('.dream-search-card');
+        if (!card) return;
+        var commandMode = card.classList.contains('is-command-mode');
+        var aiMode = card.classList.contains('is-ai-mode') && !commandMode;
+        var results = card.querySelector('.dream-search-results');
+        var selected = results && !results.hidden && results.querySelector('.dream-search-result');
+        var actionable = selected && (!commandMode || results.querySelector('[data-search-command-name], [data-search-action]'));
+        var selectHint = card.querySelector('[data-dream-search-select]');
+        var enterHint = card.querySelector('[data-dream-search-enter]');
+        var enterLabel = card.querySelector('[data-dream-search-enter-label]');
+        var allLink = card.querySelector('[data-dream-search-all]');
+        var query = card.querySelector('.search-field').value.trim();
+        if (selectHint) selectHint.hidden = aiMode || !actionable;
+        if (enterHint) enterHint.hidden = !aiMode && !actionable;
+        if (enterLabel) enterLabel.textContent = aiMode ? '发送' : (commandMode ? '执行' : '打开');
+        if (allLink) {
+            allLink.hidden = aiMode || commandMode || query.length < 2 || !searchHasMore;
+            if (!allLink.hidden) {
+                var url = new URL(Dream2WP.searchUrl || '/', window.location.origin);
+                url.searchParams.set('s', query);
+                allLink.href = url.toString();
+            }
+        }
+    }
+
     function renderSearchResults(items) {
         var results = document.querySelector('.dream-search-results');
         var empty = document.querySelector('.dream-search-empty');
@@ -1390,6 +1429,7 @@
             searchActiveIndex = -1;
             results.hidden = true;
             empty.hidden = false;
+            syncSearchFooter();
             return;
         }
         items.forEach(function (item, index) {
@@ -1397,6 +1437,7 @@
             link.className = 'dream-search-result';
             link.href = item.url || '#';
             if (item.command) link.dataset.searchCommand = '1';
+            if (item.commandName) link.dataset.searchCommandName = item.commandName;
             link.setAttribute('role', 'option');
             link.setAttribute('aria-selected', index === 0 ? 'true' : 'false');
             link.innerHTML = '<span class="dream-search-result-copy"><span class="dream-search-result-title"></span><small class="dream-search-result-detail"></small></span><span class="dream-search-result-action" aria-label="回车"><span class="dream-search-enter-symbol" aria-hidden="true"></span></span>';
@@ -1409,6 +1450,7 @@
         results.hidden = false;
         empty.hidden = true;
         updateSearchActive(0);
+        syncSearchFooter();
     }
 
     function aiSearchElements() {
@@ -1459,6 +1501,7 @@
         var elements = aiSearchElements();
         if (!elements || !elements.input) return;
         var aiMode = mode === 'ai';
+        elements.card.classList.remove('is-command-mode');
         elements.card.classList.toggle('is-ai-mode', aiMode);
         elements.card.querySelectorAll('[data-dream-search-mode]').forEach(function (button) {
             var active = button.dataset.dreamSearchMode === mode;
@@ -1475,6 +1518,8 @@
             cancelAiSearch(elements, false);
         }
         if (elements.panel) elements.panel.hidden = !aiMode;
+        elements.input.dispatchEvent(new Event('input', { bubbles: true }));
+        syncSearchFooter();
         if (focusInput !== false) {
             window.requestAnimationFrame(function () { elements.input.focus(); });
         }
@@ -1527,7 +1572,7 @@
 
     function submitAiSearch() {
         var elements = aiSearchElements();
-        if (!elements || !elements.card.classList.contains('is-ai-mode') || !Dream2WP.aiSearchEnabled) return;
+        if (!elements || !elements.card.classList.contains('is-ai-mode') || elements.card.classList.contains('is-command-mode') || !Dream2WP.aiSearchEnabled) return;
         var question = elements.input.value.trim();
         var maxLength = Number(Dream2WP.aiSearchMaxLength || 300);
         setAiSearchNotice(elements, '');
@@ -1631,6 +1676,15 @@
 
     initializeAiSearch();
 
+    var overlaySearchSubmit = document.querySelector('.dream-search-card .search-submit');
+    if (overlaySearchSubmit) {
+        var searchIcon = document.createElement('span');
+        searchIcon.className = 'search-submit';
+        searchIcon.setAttribute('aria-hidden', 'true');
+        searchIcon.innerHTML = '<i class="ri-search-line"></i>';
+        overlaySearchSubmit.replaceWith(searchIcon);
+    }
+
     document.addEventListener('click', function (event) {
         var modeButton = event.target.closest('[data-dream-search-mode]');
         if (modeButton) {
@@ -1646,7 +1700,7 @@
     });
 
     document.addEventListener('input', function (event) {
-        if (!event.target.matches('.dream-search-card.is-ai-mode .search-field')) return;
+        if (!event.target.matches('.dream-search-card.is-ai-mode:not(.is-command-mode) .search-field')) return;
         var elements = aiSearchElements();
         setAiSearchNotice(elements, '');
         if (event.target.value.trim() !== aiSearchQuestion) {
@@ -1672,27 +1726,50 @@
                 return;
             }
         }
-        if (event.key !== 'Enter' || !event.target.matches('.dream-search-card.is-ai-mode .search-field')) return;
+        if (event.key !== 'Enter' || !event.target.matches('.dream-search-card.is-ai-mode:not(.is-command-mode) .search-field')) return;
         event.preventDefault();
         event.stopImmediatePropagation();
         submitAiSearch();
     }, true);
 
     document.addEventListener('submit', function (event) {
-        if (!event.target.matches('.dream-search-card.is-ai-mode .search-form')) return;
+        if (!event.target.matches('.dream-search-card .search-form')) return;
         event.preventDefault();
         event.stopImmediatePropagation();
-        submitAiSearch();
+        if (event.target.closest('.is-ai-mode:not(.is-command-mode)')) submitAiSearch();
     }, true);
 
     $(document).on('input', '.dream-search-overlay .search-field', function () {
-        if (this.closest('.dream-search-card.is-ai-mode')) return;
         var query = this.value.trim();
+        var input = this;
+        var card = this.closest('.dream-search-card');
         clearTimeout(searchTimer);
-        var command = resolveSearchCommand(query);
-        if (command) {
-            command.command = true;
-            renderSearchResults([command]);
+        searchHasMore = false;
+        syncSearchFooter();
+        if (Dream2WP.searchCommandsEnabled && query.startsWith('/')) {
+            card.classList.add('is-command-mode');
+            cancelAiSearch(aiSearchElements(), true);
+            var aiPanel = card.querySelector('[data-dream-ai-panel]');
+            if (aiPanel) aiPanel.hidden = true;
+            var command = resolveSearchCommand(query);
+            if (command) {
+                command.command = true;
+                renderSearchResults([command]);
+            } else {
+                var suggestions = searchCommandSuggestions(query);
+                renderSearchResults(suggestions.length ? suggestions : [{ title: '未知命令', detail: '输入 /help 查看可用命令', command: true }]);
+            }
+            window.queueMicrotask(syncSearchFooter);
+            return;
+        }
+        if (card.classList.contains('is-command-mode')) {
+            card.classList.remove('is-command-mode');
+            var panel = card.querySelector('[data-dream-ai-panel]');
+            if (panel) panel.hidden = !card.classList.contains('is-ai-mode');
+        }
+        if (card.classList.contains('is-ai-mode')) {
+            renderSearchResults([]);
+            syncSearchFooter();
             return;
         }
         if (query.length < 2) {
@@ -1705,16 +1782,34 @@
             url.searchParams.set('per_page', '8');
             url.searchParams.set('subtype', 'post,page');
             fetch(url.toString(), { credentials: 'same-origin' })
-                .then(function (response) { return response.ok ? response.json() : []; })
-                .then(renderSearchResults)
-                .catch(function () { renderSearchResults([]); });
+                .then(function (response) {
+                    if (!response.ok) return { items: [], total: 0 };
+                    return response.json().then(function (items) {
+                        return { items: items, total: Number(response.headers.get('X-WP-Total')) || 0 };
+                    });
+                })
+                .then(function (result) {
+                    if (input.value.trim() === query && !card.classList.contains('is-ai-mode') && !card.classList.contains('is-command-mode')) {
+                        searchHasMore = result.total > result.items.length;
+                        renderSearchResults(result.items);
+                    }
+                })
+                .catch(function () {
+                    if (input.value.trim() === query && !card.classList.contains('is-ai-mode') && !card.classList.contains('is-command-mode')) {
+                        searchHasMore = false;
+                        renderSearchResults([]);
+                    }
+                });
         }, 180);
     });
 
     $(document).on('keydown', '.dream-search-overlay .search-field', function (event) {
-        if (this.closest('.dream-search-card.is-ai-mode')) return;
+        if (this.closest('.dream-search-card.is-ai-mode:not(.is-command-mode)')) return;
         var items = Array.prototype.slice.call(document.querySelectorAll('.dream-search-result'));
-        if (!items.length) return;
+        if (!items.length) {
+            if (event.key === 'Enter') event.preventDefault();
+            return;
+        }
         if (event.key === 'ArrowDown') {
             event.preventDefault();
             setSearchKeyboardMode(true);
@@ -1725,14 +1820,29 @@
             updateSearchActive(searchActiveIndex - 1);
         } else if (event.key === 'Enter') {
             event.preventDefault();
+            event.stopImmediatePropagation();
             if (searchActiveIndex >= 0 && items[searchActiveIndex]) {
-                if (!items[searchActiveIndex].dataset.searchCommand) window.location.href = items[searchActiveIndex].href;
+                var selected = items[searchActiveIndex];
+                if (selected.dataset.searchCommandName) {
+                    this.value = '/' + selected.dataset.searchCommandName;
+                    this.dispatchEvent(new Event('input', { bubbles: true }));
+                } else if (selected.dataset.searchAction) {
+                    selected.click();
+                } else if (!selected.dataset.searchCommand) {
+                    window.location.href = selected.href;
+                }
             }
         }
     });
 
     $(document).on('click', '.dream-search-result[data-search-command]', function (event) {
         event.preventDefault();
+        if (!this.dataset.searchCommandName) return;
+        var input = document.querySelector('.dream-search-overlay .search-field');
+        if (!input) return;
+        input.value = '/' + this.dataset.searchCommandName;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
     });
 
     $(document).on('mouseenter focus', '.dream-search-result', function () {

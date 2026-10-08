@@ -43,7 +43,7 @@ function dream2_mxin_article_summary_body($post, $content, $configuration, $stre
             array('role' => 'user', 'content' => "标题：" . get_the_title($post) . "\n\n文章：\n" . $content),
         ),
         'temperature' => 0.2,
-        'max_tokens' => 700,
+        'max_tokens' => 2500,
         'stream' => (bool) $stream,
     ), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
@@ -62,7 +62,7 @@ function dream2_mxin_article_summary_generate($post, $content, $configuration, $
             'body' => dream2_mxin_article_summary_body($post, $content, $configuration, false),
             'timeout' => 30,
             'redirection' => 0,
-            'limit_response_size' => 128 * 1024,
+            'limit_response_size' => 512 * 1024,
             'user-agent' => 'Dream2-MXIN/' . DREAM2_MXIN_VERSION,
         )
     );
@@ -72,15 +72,21 @@ function dream2_mxin_article_summary_generate($post, $content, $configuration, $
         dream2_mxin_ai_log_event('summary', $configuration, 'failed', is_wp_error($response) ? 0 : wp_remote_retrieve_response_code($response), $started, is_wp_error($response) ? 'transport_error' : 'http_error', $detail, $log_context);
         return new WP_Error('dream2_article_summary_unavailable', '文章总结暂时不可用。', array('status' => 502));
     }
-    $payload = json_decode((string) wp_remote_retrieve_body($response), true);
+    $response_body = (string) wp_remote_retrieve_body($response);
+    $payload = json_decode($response_body, true);
+    $usage = is_array($payload) ? ($payload['usage'] ?? array()) : array();
+    $completion_tokens = is_array($usage) ? absint($usage['completion_tokens'] ?? 0) : 0;
+    $reasoning_tokens = is_array($usage) && is_array($usage['completion_tokens_details'] ?? null)
+        ? absint($usage['completion_tokens_details']['reasoning_tokens'] ?? 0) : 0;
+    $diagnostics = sprintf('响应：%d 字节；finish_reason: %s；输出 token：%d；思考 token：%d', strlen($response_body), is_array($payload) ? (string) ($payload['choices'][0]['finish_reason'] ?? '(missing)') : '(missing)', $completion_tokens, $reasoning_tokens);
     if (!is_array($payload) || (string) ($payload['choices'][0]['finish_reason'] ?? '') !== 'stop') {
-        dream2_mxin_ai_log_event('summary', $configuration, 'failed', 200, $started, is_array($payload) ? 'incomplete_answer' : 'invalid_response', is_array($payload) ? 'finish_reason: ' . (string) ($payload['choices'][0]['finish_reason'] ?? '(missing)') : 'JSON 解析失败：' . json_last_error_msg(), $log_context);
+        dream2_mxin_ai_log_event('summary', $configuration, 'failed', 200, $started, is_array($payload) ? 'incomplete_answer' : 'invalid_response', $diagnostics . (is_array($payload) ? '' : '；JSON 解析失败：' . json_last_error_msg()), $log_context);
         return new WP_Error('dream2_article_summary_incomplete', '文章总结未完整生成。', array('status' => 502));
     }
     $summary = $payload['choices'][0]['message']['content'] ?? '';
     $summary = is_scalar($summary) ? dream2_mxin_site_ai_normalize_text($summary) : '';
     if ($summary === '' || dream2_mxin_site_ai_text_length($summary) > 280) {
-        dream2_mxin_ai_log_event('summary', $configuration, 'failed', 200, $started, $summary === '' ? 'empty_answer' : 'answer_too_long', '总结长度：' . dream2_mxin_site_ai_text_length($summary) . ' 字；上限：280 字', $log_context);
+        dream2_mxin_ai_log_event('summary', $configuration, 'failed', 200, $started, $summary === '' ? 'empty_answer' : 'answer_too_long', $diagnostics . '；总结长度：' . dream2_mxin_site_ai_text_length($summary) . ' 字；上限：280 字', $log_context);
         return new WP_Error('dream2_article_summary_invalid', '文章总结暂时不可用。', array('status' => 502));
     }
     dream2_mxin_ai_log_event('summary', $configuration, 'success', 200, $started, '', '', $log_context);
@@ -171,6 +177,10 @@ function dream2_mxin_article_summary_stream_generate($post, $content, $configura
     $buffer = '';
     $summary = '';
     $saw_delta = false;
+    $saw_event = false;
+    $response_bytes = 0;
+    $reasoning_events = 0;
+    $content_events = 0;
     $done = false;
     $finish_reason = '';
     $abort_reason = '';
@@ -194,18 +204,30 @@ function dream2_mxin_article_summary_stream_generate($post, $content, $configura
             }
             return strlen($line);
         },
-        CURLOPT_WRITEFUNCTION => static function ($curl, $chunk) use (&$status, &$raw, &$buffer, &$summary, &$saw_delta, &$done, &$finish_reason, &$abort_reason) {
+        CURLOPT_WRITEFUNCTION => static function ($curl, $chunk) use (&$status, &$raw, &$buffer, &$summary, &$saw_delta, &$saw_event, &$response_bytes, &$reasoning_events, &$content_events, &$done, &$finish_reason, &$abort_reason) {
             $length = strlen($chunk);
-            if (strlen($raw) + $length > 128 * 1024) {
-                $abort_reason = '响应超过 128 KiB 限制';
+            $response_bytes += $length;
+            if ($response_bytes > 512 * 1024) {
+                $abort_reason = '响应超过 512 KiB 限制';
                 return 0;
             }
-            $raw .= $chunk;
             if ($status !== 200) {
+                $raw .= $chunk;
                 return $length;
+            }
+            if (!$saw_event) {
+                $raw .= $chunk;
+                // Some compatible endpoints ignore stream=true and return a JSON response.
+                if (str_starts_with(ltrim($raw), '{')) {
+                    return $length;
+                }
             }
             $buffer .= str_replace("\r", '', $chunk);
             while (($boundary = strpos($buffer, "\n\n")) !== false) {
+                if ($boundary > 64 * 1024) {
+                    $abort_reason = '单个流式事件超过 64 KiB 限制';
+                    return 0;
+                }
                 $event = substr($buffer, 0, $boundary);
                 $buffer = substr($buffer, $boundary + 2);
                 $data_lines = array();
@@ -216,6 +238,8 @@ function dream2_mxin_article_summary_stream_generate($post, $content, $configura
                 }
                 $data = implode("\n", $data_lines);
                 if ($data === '[DONE]') {
+                    $saw_event = true;
+                    $raw = '';
                     $done = true;
                     continue;
                 }
@@ -223,10 +247,15 @@ function dream2_mxin_article_summary_stream_generate($post, $content, $configura
                 if (!is_array($payload)) {
                     continue;
                 }
+                $saw_event = true;
+                $raw = '';
                 $choice = $payload['choices'][0] ?? array();
                 $finish = $choice['finish_reason'] ?? null;
                 if (is_scalar($finish) && $finish !== '') {
                     $finish_reason = (string) $finish;
+                }
+                if (!empty($choice['delta']['reasoning_content'])) {
+                    ++$reasoning_events;
                 }
                 $delta = $choice['delta']['content'] ?? '';
                 if (is_array($delta)) {
@@ -243,7 +272,12 @@ function dream2_mxin_article_summary_stream_generate($post, $content, $configura
                     return 0;
                 }
                 $saw_delta = true;
+                ++$content_events;
                 dream2_mxin_article_summary_emit('delta', array('text' => (string) $delta));
+            }
+            if (strlen($buffer) > 64 * 1024) {
+                $abort_reason = '单个流式事件超过 64 KiB 限制';
+                return 0;
             }
             return $length;
         },
@@ -260,7 +294,7 @@ function dream2_mxin_article_summary_stream_generate($post, $content, $configura
             return $summary;
         }
     }
-    if ($success && $status === 200 && !$saw_delta) {
+    if ($success && $status === 200 && !$saw_event) {
         $payload = json_decode($raw, true);
         $content = $payload['choices'][0]['message']['content'] ?? '';
         $finish = $payload['choices'][0]['finish_reason'] ?? '';
@@ -270,8 +304,20 @@ function dream2_mxin_article_summary_stream_generate($post, $content, $configura
             return $summary;
         }
     }
-    $failure_reason = !$success ? 'transport_error' : ($status !== 200 ? 'http_error' : 'invalid_stream');
-    $detail = sprintf('cURL #%d: %s; 收到 %d 字节；delta: %s；[DONE]: %s；finish_reason: %s', $curl_errno, $abort_reason ?: ($curl_error ?: '无'), strlen($raw), $saw_delta ? '有' : '无', $done ? '有' : '无', $finish_reason ?: '(missing)');
+    if ($abort_reason === '流式总结超过 280 字限制') {
+        $failure_reason = 'answer_too_long';
+    } elseif ($abort_reason !== '') {
+        $failure_reason = 'response_limit';
+    } elseif (!$success) {
+        $failure_reason = 'transport_error';
+    } elseif ($status !== 200) {
+        $failure_reason = 'http_error';
+    } elseif ($finish_reason === 'length') {
+        $failure_reason = 'incomplete_answer';
+    } else {
+        $failure_reason = $reasoning_events > 0 && $content_events === 0 ? 'reasoning_only' : 'invalid_stream';
+    }
+    $detail = sprintf('cURL #%d: %s；收到 %d 字节；思考事件：%d；正文事件：%d；正文长度：%d 字；[DONE]: %s；finish_reason: %s', $curl_errno, $abort_reason ?: ($curl_error ?: '无'), $response_bytes, $reasoning_events, $content_events, dream2_mxin_site_ai_text_length($summary), $done ? '有' : '无', $finish_reason ?: '(missing)');
     if ($status !== 200) {
         $detail .= '; 上游错误：' . dream2_mxin_ai_log_upstream_detail(json_decode($raw, true));
     }

@@ -569,6 +569,7 @@ function dream2_mxin_link_extra_defaults() {
             'message'     => '等待检测',
             'checked_at'  => '',
             'matched_url' => '',
+            'render_type' => 'unknown',
             'status_code' => 0,
             'consecutive_failures' => 0,
             'first_failed_at'      => '',
@@ -615,6 +616,23 @@ function dream2_mxin_link_extra($bookmark) {
         }
     }
     return $extra;
+}
+
+function dream2_mxin_link_render_type($verification) {
+    $type = $verification['render_type'] ?? 'unknown';
+    $labels = array('static' => '静态', 'json' => 'JSON', 'embedded' => '内嵌数据', 'js-suspected' => '疑似 JS', 'unknown' => '未识别');
+    // Older saved checks contain only a message; infer only the observed source.
+    if ($type === 'unknown') {
+        $message = $verification['message'] ?? '';
+        $sources = array('HTML 中找到反链' => 'static', 'JSON 中找到反链' => 'json', '页面数据中找到反链' => 'embedded', '可能由 JavaScript 动态渲染' => 'js-suspected');
+        foreach ($sources as $fragment => $source) {
+            if (str_contains($message, $fragment)) {
+                $type = $source;
+                break;
+            }
+        }
+    }
+    return isset($labels[$type]) ? $type : 'unknown';
 }
 
 function dream2_mxin_link_notes($admin_email, $backlink_url, $verification = array()) {
@@ -794,6 +812,7 @@ function dream2_mxin_inspect_backlink_content($body, $target_url, $base_url, $co
             return array(
                 'status' => 'success',
                 'matched_url' => $matched_url,
+                'render_type' => 'json',
                 'message' => '站点正常，已在 JSON 中找到反链',
             );
         }
@@ -817,6 +836,7 @@ function dream2_mxin_inspect_backlink_content($body, $target_url, $base_url, $co
         return array(
             'status' => 'success',
             'matched_url' => $matched_url,
+            'render_type' => 'static',
             'message' => '站点正常，已在 HTML 中找到反链',
         );
     }
@@ -856,6 +876,7 @@ function dream2_mxin_inspect_backlink_content($body, $target_url, $base_url, $co
                 return array(
                     'status' => 'success',
                     'matched_url' => $matched_url,
+                    'render_type' => 'embedded',
                     'message' => '站点正常，已在页面数据中找到反链',
                 );
             }
@@ -870,6 +891,7 @@ function dream2_mxin_inspect_backlink_content($body, $target_url, $base_url, $co
         return array(
             'status' => 'error',
             'matched_url' => '',
+            'render_type' => 'js-suspected',
             'message' => '反链页未返回可可靠解析的链接，可能由 JavaScript 动态渲染',
         );
     }
@@ -936,6 +958,7 @@ function dream2_mxin_verify_friend_link($bookmark) {
         'backlink'    => $inspection['status'],
         'status'      => $inspection['status'],
         'message'     => $inspection['message'],
+        'render_type' => $inspection['render_type'] ?? 'unknown',
         'checked_at'  => $checked_at,
         'matched_url' => $matched_url,
         'status_code' => $backlink['code'],
@@ -1476,6 +1499,25 @@ add_action('switch_theme', function () {
     wp_clear_scheduled_hook('dream2_mxin_link_check_cron');
 });
 
+function dream2_mxin_category_bookmarks($category = 0) {
+    $category = absint($category);
+    if (!$category) {
+        $terms = get_terms(array('taxonomy' => 'link_category', 'hide_empty' => false));
+        if (is_wp_error($terms)) return array();
+        $links = array();
+        foreach ($terms as $term) {
+            foreach (dream2_mxin_category_bookmarks($term->term_id) as $link) {
+                if (!isset($links[$link->link_id])) $links[$link->link_id] = $link;
+            }
+        }
+        return array_values($links);
+    }
+    if (!term_exists($category, 'link_category')) return array();
+    $links = get_bookmarks(array('category' => (string) $category, 'hide_invisible' => true, 'orderby' => 'name', 'order' => 'ASC', 'limit' => -1));
+    if (get_term_meta($category, 'dream2_link_random_order', true)) shuffle($links);
+    return $links;
+}
+
 function dream2_mxin_link_manager_url($message = '') {
     $url = admin_url('admin.php?page=dream2-link-manager');
     return $message ? add_query_arg('dream2_link_message', $message, $url) : $url;
@@ -1566,6 +1608,15 @@ function dream2_mxin_handle_link_manager_action() {
             wp_delete_link($link_id);
         }
         wp_safe_redirect(dream2_mxin_link_manager_url('deleted'));
+        exit;
+    }
+
+    if ($action === 'save_group_order') {
+        $term_id = absint($_POST['link_category_id'] ?? 0);
+        $allowed = array_map('intval', wp_list_pluck(dream2_mxin_friend_link_terms(), 'term_id'));
+        if (!in_array($term_id, $allowed, true)) wp_die('无效的友链分类');
+        update_term_meta($term_id, 'dream2_link_random_order', !empty($_POST['random_order']) ? 1 : 0);
+        wp_safe_redirect(dream2_mxin_link_manager_url('saved'));
         exit;
     }
 
@@ -2955,7 +3006,8 @@ add_action('admin_enqueue_scripts', function ($hook) {
     }
     function hideTooltip() {
         if (tooltip) {
-            tooltip.classList.remove('is-visible', 'is-below');
+            // Keep arrow placement unchanged throughout the fade-out.
+            tooltip.classList.remove('is-visible');
         }
     }
     function showTooltip(target) {
@@ -2974,7 +3026,7 @@ add_action('admin_enqueue_scripts', function ($hook) {
         var left = rect.left + rect.width / 2 - box.width / 2;
         left = Math.max(12, Math.min(left, window.innerWidth - box.width - 12));
         var top = rect.top - box.height - 10;
-        if (top < 12) {
+        if (target.getAttribute('data-tooltip-placement') === 'below' || top < 12) {
             top = rect.bottom + 10;
             node.classList.add('is-below');
         }
@@ -3291,7 +3343,7 @@ function dream2_mxin_render_link_settings_page() {
     $lost_rule = sprintf('站点连续访问失败 %d 次后直接迁移到失联博客（按当前周期约 %d 天）', $failure_threshold, $interval_days * $failure_threshold);
     ?>
     <div class="wrap dream2-settings-wrap dream2-options-wrap dream2-link-manager" data-dream-link-ajax="<?php echo esc_url(admin_url('admin-ajax.php')); ?>" data-dream-link-nonce="<?php echo esc_attr(wp_create_nonce('dream2_link_check')); ?>">
-    <header class="dream2-options-header"><h1>梦屿友链管理</h1><span class="dream2-version">版本 <?php echo esc_html(DREAM2_MXIN_VERSION); ?></span></header>
+    <header class="dream2-options-header"><h1>梦屿友链管理 <span class="dream2-help-tooltip" tabindex="0" aria-label="友链标签说明" data-tooltip-placement="below" data-tooltip="标准友链：&#10;1. 友链页返回的 HTML 直接包含本站链接。&#10;&#10;动态友链：&#10;1. 通过 JSON 接口返回的数据检测本站网址。&#10;2. 通过友链页内嵌的 JSON 数据检测本站网址。">?</span></h1><span class="dream2-version">版本 <?php echo esc_html(DREAM2_MXIN_VERSION); ?></span></header>
     <div class="dream2-link-manager-content">
     <?php if ($message) : ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html(array('saved'=>'操作已保存。','deleted'=>'操作已删除。','missing'=>'网站名称和网站地址不能为空。','error'=>'友链保存失败。','group_not_empty'=>'分组下仍有链接，不能删除。','category_saved'=>'分类已创建并加入梦屿友链管理。','category_missing'=>'分类名称不能为空。','category_error'=>'分类创建失败。')[$message] ?? '操作完成。'); ?></p></div><?php endif; ?>
     <div class="dream2-link-page-heading"><h2>友链管理</h2><a class="button" href="<?php echo esc_url(home_url('/links')); ?>" target="_blank" rel="noopener noreferrer">预览前台</a></div>
@@ -3335,6 +3387,15 @@ function dream2_mxin_render_link_settings_page() {
         <section class="dream2-link-group">
             <div class="dream2-link-group-header">
                 <strong><?php echo esc_html($term->name); ?>（<?php echo esc_html((string) count($group_links)); ?>）</strong>
+                <span class="dream2-link-render-tag"><?php echo get_term_meta($term->term_id, 'dream2_link_random_order', true) ? '随机顺序' : '名称顺序'; ?></span>
+                <form method="post" action="<?php echo esc_url(dream2_mxin_link_manager_url()); ?>" class="dream2-link-group-order">
+                    <?php wp_nonce_field('dream2_link_manager'); ?>
+                    <input type="hidden" name="dream2_link_manager_action" value="save_group_order">
+                    <input type="hidden" name="link_category_id" value="<?php echo esc_attr((string) $term->term_id); ?>">
+                    <?php $random_order_enabled = (bool) get_term_meta($term->term_id, 'dream2_link_random_order', true); ?>
+                    <input type="hidden" name="random_order" value="<?php echo $random_order_enabled ? '0' : '1'; ?>">
+                    <button type="submit" class="button<?php echo $random_order_enabled ? ' button-primary' : ''; ?>" aria-pressed="<?php echo $random_order_enabled ? 'true' : 'false'; ?>">随机顺序</button>
+                </form>
                 <button type="button" class="button button-primary" data-dream-link-new="<?php echo esc_attr((string) $term->term_id); ?>">新建友链</button>
                 <button type="button" class="button" data-dream-link-group-check>检测本组</button>
             </div>
@@ -3357,6 +3418,8 @@ function dream2_mxin_render_link_settings_page() {
                 $access_state = isset($access_labels[$verification['access']]) ? $verification['access'] : 'pending';
                 $backlink_state = $extra['backlink_url'] === '' ? 'skip' : (isset($backlink_labels[$verification['backlink']]) ? $verification['backlink'] : 'pending');
                 $overall_state = in_array($verification['status'], array('pending', 'success', 'missing', 'error', 'skip'), true) ? $verification['status'] : 'pending';
+                $render_type = dream2_mxin_link_render_type($verification);
+                $render_labels = array('static' => '标准友链', 'json' => '动态友链', 'embedded' => '动态友链');
                 $status_title = trim($verification['message'] . ($verification['checked_at'] ? '；' . $verification['checked_at'] : ''));
                 ?>
                 <article class="dream2-link-card" data-dream-link-id="<?php echo esc_attr((string) $bookmark->link_id); ?>" data-dream-link-term="<?php echo esc_attr((string) $term_id); ?>" data-dream-link-status="<?php echo esc_attr($overall_state); ?>" data-dream-link-access="<?php echo esc_attr($access_state); ?>" data-dream-link-backlink="<?php echo esc_attr($backlink_state); ?>" data-dream-link-has-backlink="<?php echo esc_attr($extra['backlink_url'] === '' ? '0' : '1'); ?>">
@@ -3372,6 +3435,7 @@ function dream2_mxin_render_link_settings_page() {
                             <?php if ($extra['backlink_url'] !== '') : ?>
                                 <span class="dream2-link-status is-<?php echo esc_attr($backlink_state); ?>" data-dream-link-backlink>⌁ <?php echo esc_html($backlink_labels[$backlink_state]); ?></span>
                             <?php endif; ?>
+                            <span class="dream2-link-render-tag" data-dream-link-render<?php echo isset($render_labels[$render_type]) ? '' : ' hidden'; ?> title="分类依据见标题旁说明"><?php echo esc_html($render_labels[$render_type] ?? ''); ?></span>
                             <a class="dream2-link-visit" href="<?php echo esc_url($bookmark->link_url); ?>" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">访问</a>
                         </span>
                     </div>
@@ -3508,6 +3572,9 @@ function dream2_mxin_render_link_settings_page() {
             card.attr('data-dream-link-backlink', result.backlink).data('dream-link-backlink', result.backlink);
             setPill(card.find('[data-dream-link-access]'), 'access', result.access);
             setPill(card.find('[data-dream-link-backlink]'), 'backlink', result.backlink);
+            var renderLabels = {'static': '标准友链', json: '动态友链', embedded: '动态友链'};
+            var renderLabel = renderLabels[result.render_type] || '';
+            card.find('[data-dream-link-render]').text(renderLabel).prop('hidden', !renderLabel);
             card.find('.dream2-link-status-dock').attr('title', result.message + (result.checked_at ? '；' + result.checked_at : ''));
         }
 
@@ -3519,6 +3586,7 @@ function dream2_mxin_render_link_settings_page() {
             card.attr('data-dream-link-backlink', backlinkState).data('dream-link-backlink', backlinkState);
             setPill(card.find('[data-dream-link-access]'), 'access', 'error');
             setPill(card.find('[data-dream-link-backlink]'), 'backlink', backlinkState);
+            card.find('[data-dream-link-render]').text('').prop('hidden', true);
             card.find('.dream2-link-status-dock').attr('title', message);
         }
 

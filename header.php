@@ -112,8 +112,9 @@
         <div class="dream-search-results" hidden></div>
         <div class="dream-search-empty"><?php esc_html_e('没有搜索结果', 'dream2-mxin'); ?></div>
         <div class="dream-search-footer">
-            <span><kbd>↑</kbd><kbd>↓</kbd> <?php esc_html_e('选择', 'dream2-mxin'); ?></span>
-            <span><kbd class="dream-search-enter-key"><span class="dream-search-enter-symbol" aria-hidden="true"></span></kbd> <?php esc_html_e('确认', 'dream2-mxin'); ?></span>
+            <a class="dream-search-all" data-dream-search-all href="<?php echo esc_url(home_url('/')); ?>" hidden><?php esc_html_e('查看全部结果', 'dream2-mxin'); ?></a>
+            <span data-dream-search-select hidden><kbd>↑</kbd><kbd>↓</kbd> <?php esc_html_e('选择', 'dream2-mxin'); ?></span>
+            <span data-dream-search-enter><kbd class="dream-search-enter-key"><span class="dream-search-enter-symbol" aria-hidden="true"></span></kbd> <span data-dream-search-enter-label><?php esc_html_e('发送', 'dream2-mxin'); ?></span></span>
             <button class="dream-search-close" type="button"><kbd>ESC</kbd> <?php esc_html_e('关闭', 'dream2-mxin'); ?></button>
         </div>
     </div>

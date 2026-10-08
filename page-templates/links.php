@@ -7,11 +7,7 @@ get_header();
 $link_groups = array();
 foreach (dream2_mxin_friend_link_group_terms() as $group) {
     $term = $group['term'];
-    $group_links = get_bookmarks(array(
-        'category' => $term->term_id,
-        'orderby'  => 'name',
-        'order'    => 'ASC',
-    ));
+    $group_links = dream2_mxin_category_bookmarks($term->term_id);
     if ($group_links) {
         $link_groups[$group['label']] = $group_links;
     }

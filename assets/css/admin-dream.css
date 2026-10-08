@@ -342,7 +342,7 @@
     font-size: 13px;
     font-weight: 500;
     line-height: 1.7;
-    white-space: normal;
+    white-space: pre-line;
     text-align: left;
 }
 
@@ -386,6 +386,7 @@
     font-size: 13px;
     font-weight: 500;
     line-height: 1.7;
+    white-space: pre-line;
     text-align: left;
     opacity: 0;
     visibility: hidden;
@@ -1275,6 +1276,23 @@
     gap: 7px;
 }
 
+.dream2-link-render-tag[hidden] {
+    display: none;
+}
+
+.dream2-link-render-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 5px;
+    border: 1px solid #dbe3ef;
+    border-radius: 4px;
+    color: #64748b;
+    background: #eef2f7;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
 .dream2-link-status {
     position: static;
     display: inline-flex;
@@ -1463,6 +1481,14 @@
 .dream2-link-group-header .button {
     min-height: 28px;
     padding: 0 14px;
+}
+
+.dream2-link-group-order {
+    margin: 0 0 0 auto;
+}
+
+.dream2-link-group-header .dream2-link-group-order + .button-primary {
+    margin-left: 0;
 }
 
 .dream2-link-group-header .button-primary {

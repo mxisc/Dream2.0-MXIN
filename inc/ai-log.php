@@ -92,7 +92,6 @@ function dream2_mxin_render_ai_log_page() {
       <header class="dream2-options-header"><h1>AI 请求记录</h1><span class="dream2-version">最近 30 天 / 最多 500 条</span></header>
       <div class="dream2-mail-log-content">
         <?php if (isset($_GET['cleared'])) : ?><div class="notice notice-success is-dismissible"><p>AI 请求记录已清空。</p></div><?php endif; ?>
-        <p class="description">点击失败记录的“查看详情”可看诊断信息；旧记录无法补回当时的错误详情。流式失败后的普通请求可用同一请求 ID 对照。</p>
         <div class="dream2-mail-log-metrics">
           <div><strong><?php echo esc_html((string) count($entries)); ?></strong><span>总请求</span></div>
           <div class="is-success"><strong><?php echo esc_html((string) $success); ?></strong><span>成功</span></div>

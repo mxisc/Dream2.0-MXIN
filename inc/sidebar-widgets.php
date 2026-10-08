@@ -538,6 +538,7 @@ function dream2_mxin_sidebar_widget_defaults($type) {
         'tagcloud'        => array('title' => '标签云', 'icon' => 'ri-cloud-line', 'class' => 'tagcloud'),
         'ad_piece'        => array('title' => '', 'icon' => '', 'class' => 'dream-ad'),
         'custom'          => array('title' => '自定义模块', 'icon' => 'ri-apps-2-line', 'class' => ''),
+        'friend_links'    => array('title' => '友情链接', 'icon' => 'ri-links-line', 'class' => 'dream-friend-links'),
         'releases'        => array('title' => '更新记录', 'icon' => 'ri-rocket-line', 'class' => 'dream-releases'),
     );
     return $defaults[$type] ?? array('title' => '', 'icon' => '', 'class' => '');
@@ -702,6 +703,27 @@ function dream2_mxin_render_sidebar_widget_module($type, $module = array(), $wid
         <?php if (dream2_mxin_widget_module_enabled($module, 'show_ad_tag')) : ?><span class="dream-ad-tag">广告</span><?php endif; ?>
         <?php if (dream2_mxin_widget_module_enabled($module, 'ad_tag_close')) : ?><button class="dream-ad-close" type="button" aria-label="关闭广告"><i class="ri-close-line"></i></button><?php endif; ?>
         <?php if ($ad_mode === 'image') : ?><a href="<?php echo esc_url(dream2_mxin_widget_module_value($module, 'ad_target_url', '#')); ?>"><img src="<?php echo esc_url(dream2_mxin_widget_module_value($module, 'ad_image', '')); ?>" alt="广告"></a><?php else : echo dream2_mxin_sanitize_custom_widget_content(dream2_mxin_widget_module_value($module, 'ad_custom_code', '')); endif; ?>
+    <?php elseif ($type === 'friend_links') : ?>
+        <?php dream2_mxin_sidebar_widget_title_html($module, $defaults['title'], $defaults['icon']); ?>
+        <div class="card-content"><ul class="dream-sidebar-links">
+            <?php
+            $category = absint($module['link_category'] ?? 0);
+            $links = dream2_mxin_category_bookmarks($category);
+            if (!empty($module['featured_only'])) {
+                $links = array_filter($links, static function ($link) {
+                    $verification = dream2_mxin_link_extra($link)['verification'];
+                    return $verification['backlink'] === 'success'
+                        && dream2_mxin_link_render_type($verification) === 'static';
+                });
+            }
+            $links = array_slice($links, 0, dream2_mxin_widget_number($module['links_limit'] ?? 10, 10, 1, 50));
+            foreach ($links as $link) : ?>
+                <li><a href="<?php echo esc_url($link->link_url); ?>" target="_blank" rel="noopener" title="<?php echo esc_attr($link->link_name); ?>">
+                    <img src="<?php echo esc_url($link->link_image ?: dream2_get('links_default_avatar', dream2_mxin_asset('img/avatar.svg'))); ?>" alt="" loading="lazy" width="36" height="36">
+                    <span class="dream-sidebar-link-info"><strong><?php echo esc_html($link->link_name); ?></strong><?php if ($link->link_description !== '') : ?><small><?php echo esc_html($link->link_description); ?></small><?php endif; ?></span>
+                </a></li>
+            <?php endforeach; ?>
+        </ul></div>
     <?php elseif ($type === 'releases') : ?>
         <?php dream2_mxin_sidebar_widget_title_html($module, $defaults['title'], $defaults['icon']); ?>
         <?php dream2_mxin_render_release_widget($module); ?>
@@ -1175,6 +1197,38 @@ class Dream2_MXIN_Tagcloud_Widget extends Dream2_MXIN_Sidebar_Widget { public fu
 class Dream2_MXIN_Ad_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_ad', 'Dream2 广告模块', 'ad_piece', '', ''); } }
 class Dream2_MXIN_Custom_Widget extends Dream2_MXIN_Sidebar_Widget { public function __construct() { parent::__construct('dream2_custom', 'Dream2 自定义模块', 'custom', '自定义模块', 'ri-apps-2-line'); } }
 
+class Dream2_MXIN_Friend_Links_Widget extends Dream2_MXIN_Sidebar_Widget {
+    public function __construct() {
+        parent::__construct('dream2_friend_links', 'Dream2 友情链接', 'friend_links', '友情链接', 'ri-links-line');
+    }
+
+    public function update($new_instance, $old_instance) {
+        $instance = parent::update($new_instance, $old_instance);
+        $category = absint($new_instance['link_category'] ?? 0);
+        $instance['link_category'] = $category && term_exists($category, 'link_category') ? $category : 0;
+        $instance['links_limit'] = dream2_mxin_widget_number($new_instance['links_limit'] ?? 10, 10, 1, 50);
+        $instance['featured_only'] = !empty($new_instance['featured_only']) ? 1 : 0;
+        return $instance;
+    }
+
+    public function form($instance) {
+        parent::form($instance);
+        $category = absint($instance['link_category'] ?? 0);
+        $terms = get_terms(array('taxonomy' => 'link_category', 'hide_empty' => false));
+        ?>
+        <p><label for="<?php echo esc_attr($this->get_field_id('link_category')); ?>">展示分类</label>
+            <select class="widefat" id="<?php echo esc_attr($this->get_field_id('link_category')); ?>" name="<?php echo esc_attr($this->get_field_name('link_category')); ?>">
+                <option value="0" <?php selected($category, 0); ?>>全部分类</option>
+                <?php if (!is_wp_error($terms)) : foreach ($terms as $term) : ?>
+                    <option value="<?php echo esc_attr((string) $term->term_id); ?>" <?php selected($category, $term->term_id); ?>><?php echo esc_html($term->name); ?></option>
+                <?php endforeach; endif; ?>
+            </select>
+        </p>
+        <p><label><input type="checkbox" name="<?php echo esc_attr($this->get_field_name('featured_only')); ?>" value="1" <?php checked(!empty($instance['featured_only'])); ?>> 仅展示精选（标准友链）</label></p>
+        <?php $this->number_field('links_limit', '展示数量', $instance['links_limit'] ?? 10, 1, 50);
+    }
+}
+
 class Dream2_MXIN_Releases_Widget extends Dream2_MXIN_Sidebar_Widget {
     public function __construct() {
         parent::__construct('dream2_releases', 'Dream2 GitHub 发版跟踪', 'releases', '更新记录', 'ri-rocket-line');
@@ -1235,6 +1289,7 @@ function dream2_mxin_register_sidebar_widgets() {
         'Dream2_MXIN_Ad_Widget',
         'Dream2_MXIN_Custom_Widget',
         'Dream2_MXIN_Releases_Widget',
+        'Dream2_MXIN_Friend_Links_Widget',
     ) as $widget_class) {
         register_widget($widget_class);
     }
