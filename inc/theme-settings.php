@@ -3424,6 +3424,7 @@ function dream2_mxin_render_link_settings_page() {
                 ?>
                 <article class="dream2-link-card" data-dream-link-id="<?php echo esc_attr((string) $bookmark->link_id); ?>" data-dream-link-term="<?php echo esc_attr((string) $term_id); ?>" data-dream-link-status="<?php echo esc_attr($overall_state); ?>" data-dream-link-access="<?php echo esc_attr($access_state); ?>" data-dream-link-backlink="<?php echo esc_attr($backlink_state); ?>" data-dream-link-has-backlink="<?php echo esc_attr($extra['backlink_url'] === '' ? '0' : '1'); ?>">
                     <div class="dream2-link-preview" data-dream-link-toggle>
+<span class="dream2-link-render-tag" data-dream-link-render<?php echo isset($render_labels[$render_type]) ? '' : ' hidden'; ?> title="分类依据见标题旁说明"><?php echo esc_html($render_labels[$render_type] ?? ''); ?></span>
                         <img class="dream2-link-preview-avatar" src="<?php echo esc_url($avatar); ?>" alt="">
                         <span class="dream2-link-preview-body">
                             <strong><?php echo esc_html($bookmark->link_name); ?></strong>
@@ -3435,7 +3436,6 @@ function dream2_mxin_render_link_settings_page() {
                             <?php if ($extra['backlink_url'] !== '') : ?>
                                 <span class="dream2-link-status is-<?php echo esc_attr($backlink_state); ?>" data-dream-link-backlink>⌁ <?php echo esc_html($backlink_labels[$backlink_state]); ?></span>
                             <?php endif; ?>
-                            <span class="dream2-link-render-tag" data-dream-link-render<?php echo isset($render_labels[$render_type]) ? '' : ' hidden'; ?> title="分类依据见标题旁说明"><?php echo esc_html($render_labels[$render_type] ?? ''); ?></span>
                             <a class="dream2-link-visit" href="<?php echo esc_url($bookmark->link_url); ?>" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation();">访问</a>
                         </span>
                     </div>

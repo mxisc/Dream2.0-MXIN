@@ -1276,6 +1276,17 @@
     gap: 7px;
 }
 
+.dream2-link-card [data-dream-link-render] {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+}
+
+.dream2-link-card:has([data-dream-link-render]:not([hidden])) .dream2-link-preview-body strong {
+    padding-right: 60px;
+}
+
 .dream2-link-render-tag[hidden] {
     display: none;
 }
